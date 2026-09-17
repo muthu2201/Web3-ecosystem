@@ -36,10 +36,11 @@ contract CurveInvariantTest is Fixture {
         targetContract(address(handler));
 
         // Keep the fuzzer inside the handler; direct calls would bypass its ghost accounting.
-        bytes4[] memory selectors = new bytes4[](3);
+        bytes4[] memory selectors = new bytes4[](4);
         selectors[0] = CurveHandler.buy.selector;
         selectors[1] = CurveHandler.sell.selector;
         selectors[2] = CurveHandler.advanceTime.selector;
+        selectors[3] = CurveHandler.completeCurve.selector;
         targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
     }
 

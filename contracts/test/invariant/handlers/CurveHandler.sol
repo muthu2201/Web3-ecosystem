@@ -41,6 +41,10 @@ contract CurveHandler is CommonBase, StdCheats, StdUtils {
     uint256 public launchCount;
     uint256 public graduationCount;
 
+    /// @dev Trades a run must make before `completeCurve` will force graduation.
+    uint256 internal constant MIN_BUYS_BEFORE_COMPLETION = 6;
+    uint256 internal constant MIN_SELLS_BEFORE_COMPLETION = 2;
+
     constructor(BondingCurveFactory factory_, IFeeRouter feeRouter_, address creator_, address[] memory actors_) {
         factory = factory_;
         feeRouter = feeRouter_;
@@ -104,9 +108,23 @@ contract CurveHandler is CommonBase, StdCheats, StdUtils {
 
     function sell(uint256 actorSeed, uint256 pct) public {
         _rotateIfGraduated();
-        address actor = _actor(actorSeed);
-        uint256 held = token.balanceOf(actor);
-        if (held == 0) return;
+
+        // Find an actor who actually holds the CURRENT curve's token, starting from the seeded
+        // index. After a rotation every actor's balance is in the previous curve's token, so
+        // checking only the seeded actor would make sells silently vanish for the rest of the
+        // run - and with them, the only exercise of the sell path.
+        address actor;
+        uint256 held;
+        for (uint256 i; i < actors.length; ++i) {
+            address candidate = actors[(actorSeed + i) % actors.length];
+            uint256 balance = token.balanceOf(candidate);
+            if (balance > 0) {
+                actor = candidate;
+                held = balance;
+                break;
+            }
+        }
+        if (actor == address(0)) return;
 
         uint256 amount = (held * bound(pct, 1, 100)) / 100;
         if (amount == 0) return;
@@ -121,6 +139,41 @@ contract CurveHandler is CommonBase, StdCheats, StdUtils {
             // insufficient reserve or slippage
         }
         vm.stopPrank();
+    }
+
+    /// @dev Buys out whatever remains of the curve, forcing graduation.
+    ///
+    ///      Relying on random buys to exhaust a curve made the campaign flaky: roughly half of
+    ///      all runs never reached graduation, so the assertion that the migration path had been
+    ///      exercised failed intermittently while the contracts were fine. Weakening the
+    ///      assertion would have hidden the coverage gap instead of closing it.
+    ///
+    ///      The overpay is deliberate. The curve fills the remainder and refunds the rest, so
+    ///      this exercises the partial-fill and refund path as well as graduation.
+    ///
+    ///      Gated on the run having traded first, so it cannot simply graduate a curve on the
+    ///      opening call and skip the intermediate states this suite exists to explore.
+    function completeCurve(uint256 actorSeed) public {
+        _rotateIfGraduated();
+        // Both gates matter. Forcing graduation as soon as enough buys have happened made curves
+        // rotate so aggressively that no actor ever held the current curve's token long enough to
+        // sell, which starved the sell path instead of the graduation path.
+        if (buyCount < MIN_BUYS_BEFORE_COMPLETION || sellCount < MIN_SELLS_BEFORE_COMPLETION) {
+            return;
+        }
+
+        address actor = _actor(actorSeed);
+        uint256 amount = 50 ether;
+        vm.deal(actor, actor.balance + amount);
+
+        uint256 balanceBefore = actor.balance;
+        vm.prank(actor);
+        try curve.buy{value: amount}(0, block.timestamp + 1) {
+            ghostNativeIn += balanceBefore - actor.balance;
+            buyCount++;
+        } catch {
+            // anti-snipe cap during the opening window
+        }
     }
 
     /// @dev Lets a run cross the anti-snipe window boundary.

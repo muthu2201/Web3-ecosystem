@@ -12,6 +12,7 @@ import {PresaleFactory} from "../src/launch/PresaleFactory.sol";
 import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {NftFactory} from "../src/nft/NftFactory.sol";
 import {NftMarketplace} from "../src/nft/NftMarketplace.sol";
+import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {
     ComplianceTokenDeployer,
     GovernanceTokenDeployer,
@@ -20,7 +21,6 @@ import {
     StandardTokenDeployer,
     TaxTokenDeployer
 } from "../src/tokens/deployers/TokenDeployers.sol";
-import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
@@ -108,14 +108,15 @@ contract Deploy is Script {
     function bindImplementations(Deployment memory d) external {
         d.curveFactory.setCurveImplementation(address(d.curveImplementation));
         d.presaleFactory.setPresaleImplementation(address(d.presaleImplementation));
-        d.tokenFactory.bindDeployers(
-            new StandardTokenDeployer(address(d.tokenFactory)),
-            new MintableTokenDeployer(address(d.tokenFactory)),
-            new PausableTokenDeployer(address(d.tokenFactory)),
-            new GovernanceTokenDeployer(address(d.tokenFactory)),
-            new TaxTokenDeployer(address(d.tokenFactory)),
-            new ComplianceTokenDeployer(address(d.tokenFactory))
-        );
+        d.tokenFactory
+            .bindDeployers(
+                new StandardTokenDeployer(address(d.tokenFactory)),
+                new MintableTokenDeployer(address(d.tokenFactory)),
+                new PausableTokenDeployer(address(d.tokenFactory)),
+                new GovernanceTokenDeployer(address(d.tokenFactory)),
+                new TaxTokenDeployer(address(d.tokenFactory)),
+                new ComplianceTokenDeployer(address(d.tokenFactory))
+            );
     }
 
     /// @notice Launch parameters for new curves.

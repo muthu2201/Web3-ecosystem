@@ -89,12 +89,7 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     );
 
     event DeployersBound(
-        address standard,
-        address mintable,
-        address pausable,
-        address governance,
-        address tax,
-        address compliance
+        address standard, address mintable, address pausable, address governance, address tax, address compliance
     );
 
     error InsufficientFee(uint256 provided, uint256 required);
@@ -235,9 +230,7 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     {
         if (!deployersBound) revert DeployersNotBound();
         uint256 fee = _collectFee();
-        token = mintableDeployer.deploy(
-            _salt(p.salt), p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin
-        );
+        token = mintableDeployer.deploy(_salt(p.salt), p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin);
         _register(token, Template.Mintable, p.name, p.symbol, p.initialSupply, fee);
     }
 
@@ -265,9 +258,8 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     {
         if (!deployersBound) revert DeployersNotBound();
         uint256 fee = _collectFee();
-        token = governanceDeployer.deploy(
-            _salt(p.salt), p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin
-        );
+        token =
+            governanceDeployer.deploy(_salt(p.salt), p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin);
         _register(token, Template.Governance, p.name, p.symbol, p.initialSupply, fee);
     }
 

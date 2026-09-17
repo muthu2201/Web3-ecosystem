@@ -151,6 +151,8 @@ contract NftCollection is ERC721, ERC2981, Ownable2Step, ReentrancyGuard {
         firstTokenId = _nextTokenId;
         _nextTokenId += quantity;
 
+        // Zero for a free mint phase, where there is nothing to take a fee on.
+        // slither-disable-next-line uninitialized-local
         uint256 fee;
         if (cost != 0) {
             fee = feeRouter.feeOn(IFeeRouter.Product.NftMint, cost);

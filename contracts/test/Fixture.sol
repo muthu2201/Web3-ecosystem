@@ -13,6 +13,7 @@ import {PresaleFactory} from "../src/launch/PresaleFactory.sol";
 import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {NftFactory} from "../src/nft/NftFactory.sol";
 import {NftMarketplace} from "../src/nft/NftMarketplace.sol";
+import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {
     ComplianceTokenDeployer,
     GovernanceTokenDeployer,
@@ -21,7 +22,6 @@ import {
     StandardTokenDeployer,
     TaxTokenDeployer
 } from "../src/tokens/deployers/TokenDeployers.sol";
-import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {MockUniswapV2Factory, MockUniswapV2Router02, MockWETH} from "./mocks/UniswapV2.sol";
 import {Test} from "forge-std/Test.sol";
 

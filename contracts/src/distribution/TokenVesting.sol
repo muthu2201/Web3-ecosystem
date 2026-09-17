@@ -94,6 +94,10 @@ contract TokenVesting is ReentrancyGuard {
         uint256 before = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         uint256 received = IERC20(token).balanceOf(address(this)) - before;
+        // Exact equality is correct: this rejects a transfer that delivered literally nothing,
+        // which is what a fully-taxing or non-compliant token does. Any non-zero amount is
+        // credited as-is.
+        // slither-disable-next-line incorrect-equality
         if (received == 0) revert ZeroAmount();
         if (received > type(uint128).max) revert AmountTooLarge(received);
 
@@ -127,6 +131,9 @@ contract TokenVesting is ReentrancyGuard {
         if (s.beneficiary == address(0)) revert UnknownSchedule(scheduleId);
 
         amount = _releasable(s);
+        // Exact equality is correct: releasing zero would emit a misleading event and waste gas,
+        // so the caller is told there is nothing to claim yet.
+        // slither-disable-next-line incorrect-equality
         if (amount == 0) revert NothingToRelease(scheduleId);
 
         // Safe: `amount` is `vested - released` and `vested <= totalAmount`, a uint128.

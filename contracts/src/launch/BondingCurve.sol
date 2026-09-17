@@ -213,6 +213,12 @@ contract BondingCurve is ReentrancyGuardTransient {
     /// @dev If the requested amount would overrun the remaining curve supply, the buy is filled
     ///      partially at the exact cost of the remaining tokens and the unused native is refunded,
     ///      with the fee charged only on the portion actually used.
+    /// @dev Static analysis reports reentrancy here because state is written after external
+    ///      calls inside `_graduate`. It is safe, for two independent reasons: this function is
+    ///      `nonReentrant` (a transient-storage guard the analyser does not model), and
+    ///      `_graduate` sets `graduated` and zeroes `realNativeReserve` before making any
+    ///      external call, so a re-entrant caller would find the curve already closed.
+    // slither-disable-next-line reentrancy-eth,reentrancy-benign,reentrancy-no-eth
     function buy(uint256 minTokensOut, uint256 deadline) external payable nonReentrant returns (uint256 tokensOut) {
         _requireActive(deadline);
         if (msg.value == 0) revert ZeroAmount();
@@ -227,6 +233,8 @@ contract BondingCurve is ReentrancyGuardTransient {
 
         tokensOut = CurveMath.tokensOutForNativeIn(virtualNativeReserve, virtualTokenReserve, netIn);
 
+        // Zero unless the buy is partially filled, which is the only case that refunds.
+        // slither-disable-next-line uninitialized-local
         uint256 refund;
         if (tokensOut > remaining) {
             // Partial fill: price the remaining supply exactly, then gross the fee back up so the
@@ -341,9 +349,13 @@ contract BondingCurve is ReentrancyGuardTransient {
         uint256 liquidity = IUniswapV2Pair(pair).mint(lpRecipient);
         if (liquidity == 0) revert NoLiquidityMinted();
 
+        // Zero when the LP is burned rather than locked; there is no lock to identify.
+        // slither-disable-next-line uninitialized-local
         uint256 lockId;
         if (lockLpInsteadOfBurn) {
-            IUniswapV2Pair(pair).approve(address(locker), liquidity);
+            // forceApprove, not approve: a pair's approve return value is unchecked otherwise,
+            // and not every chain's V2 fork returns a bool the way the canonical one does.
+            IERC20(pair).forceApprove(address(locker), liquidity);
             lockId = locker.lock(pair, liquidity, uint64(block.timestamp) + lpLockDuration, creator);
         }
 
@@ -389,6 +401,8 @@ contract BondingCurve is ReentrancyGuardTransient {
     /// @dev Surfaced so the UI can warn traders before they buy rather than after they are stuck.
     function poolPreSeeded() external view returns (bool) {
         if (pair == address(0)) return false;
+        // The third return value is the pair's last-update timestamp, which is irrelevant here.
+        // slither-disable-next-line unused-return
         (uint112 r0, uint112 r1,) = IUniswapV2Pair(pair).getReserves();
         return r0 != 0 || r1 != 0;
     }

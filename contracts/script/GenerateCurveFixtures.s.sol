@@ -60,7 +60,7 @@ contract GenerateCurveFixtures is Script {
             4 ether,
             10 ether,
             100 ether,
-            1_000 ether
+            1000 ether
         ];
 
         // Reserve states sampled along the curve, so rounding is exercised at the start, the
@@ -85,11 +85,7 @@ contract GenerateCurveFixtures is Script {
                 cases[n++] = Case({virtualNative: vNative, virtualToken: vToken, amount: amounts[a]});
                 // Token-denominated input, for sell pricing. Scaled up because a token unit is
                 // worth far less than a wei of native at these reserve ratios.
-                cases[n++] = Case({
-                    virtualNative: vNative,
-                    virtualToken: vToken,
-                    amount: amounts[a] * 1_000_000
-                });
+                cases[n++] = Case({virtualNative: vNative, virtualToken: vToken, amount: amounts[a] * 1_000_000});
             }
         }
 
@@ -107,9 +103,7 @@ contract GenerateCurveFixtures is Script {
         // the case, so the TypeScript port is required to reject the same inputs.
         string memory nativeIn = "null";
         if (c.amount > 0 && c.amount < c.virtualToken) {
-            nativeIn = vm.toString(
-                CurveMath.nativeInForExactTokensOut(c.virtualNative, c.virtualToken, c.amount)
-            );
+            nativeIn = vm.toString(CurveMath.nativeInForExactTokensOut(c.virtualNative, c.virtualToken, c.amount));
         }
 
         return string.concat(
@@ -124,9 +118,7 @@ contract GenerateCurveFixtures is Script {
             '","nativeOutForTokensIn":"',
             vm.toString(nativeOut),
             '","nativeInForExactTokensOut":',
-            keccak256(bytes(nativeIn)) == keccak256(bytes("null"))
-                ? "null"
-                : string.concat('"', nativeIn, '"'),
+            keccak256(bytes(nativeIn)) == keccak256(bytes("null")) ? "null" : string.concat('"', nativeIn, '"'),
             ',"spotPriceX18":"',
             vm.toString(CurveMath.spotPriceX18(c.virtualNative, c.virtualToken, 1e18)),
             '"}'

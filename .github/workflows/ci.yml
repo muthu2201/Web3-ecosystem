@@ -1,0 +1,230 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A compromised third-party action cannot escalate beyond reading if the default token is
+# read-only. Jobs that need more must ask for it explicitly.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  contracts:
+    name: Contracts (build, lint, test, sizes)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Check formatting
+        working-directory: contracts
+        run: forge fmt --check
+
+      - name: Build
+        working-directory: contracts
+        run: forge build
+
+      - name: Lint
+        working-directory: contracts
+        run: forge lint
+
+      # Gated because TokenFactory once compiled to 59,318 bytes against the 24,576-byte limit
+      # and every test still passed: Foundry raises the code-size limit inside tests, so an
+      # undeployable contract satisfies its assertions perfectly.
+      - name: Enforce EIP-170 code size limit
+        working-directory: contracts
+        run: |
+          forge build --sizes --json > sizes.json
+          node -e '
+            const sizes = JSON.parse(require("fs").readFileSync("sizes.json", "utf8"));
+            const over = Object.entries(sizes).filter(([, v]) => (v.runtime_size ?? 0) > 24576);
+            if (over.length) {
+              console.error("Contracts over the EIP-170 limit:");
+              for (const [name, v] of over) console.error(`  ${name}: ${v.runtime_size} bytes`);
+              process.exit(1);
+            }
+            console.log(`All ${Object.keys(sizes).length} contracts are within EIP-170.`);
+          '
+
+      - name: Test
+        working-directory: contracts
+        run: forge test -vvv
+
+      - name: Coverage
+        working-directory: contracts
+        run: forge coverage --report summary --report lcov --no-match-coverage "(test|script)"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: contracts/lcov.info
+
+  slither:
+    name: Slither static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Slither
+        run: pip install slither-analyzer
+
+      - name: Build for analysis
+        working-directory: contracts
+        run: forge build --build-info --force
+
+      # Fails on high and medium findings. Low and informational are reported but do not block,
+      # because the noise floor on those would make the gate meaningless and it would be muted.
+      - name: Run Slither
+        working-directory: contracts
+        run: slither . --config-file slither.config.json --fail-high --fail-medium
+
+  typescript:
+    name: TypeScript (typecheck, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - run: pnpm install --frozen-lockfile
+
+      # The differential tests compare the TypeScript curve maths against the real Solidity
+      # library, so the contracts must be built and the fixtures regenerated first. Without this
+      # the fixtures could go stale and the comparison would quietly stop meaning anything.
+      - name: Build contracts and regenerate fixtures
+        working-directory: contracts
+        run: |
+          forge build
+          forge script script/GenerateCurveFixtures.s.sol
+
+      - name: Export ABIs
+        run: pnpm contracts:abi
+
+      - name: Verify generated ABIs are current
+        run: |
+          if ! git diff --quiet -- packages/sdk/src/generated; then
+            echo "Generated ABIs are out of date. Run 'pnpm contracts:abi' and commit the result."
+            git diff --stat -- packages/sdk/src/generated
+            exit 1
+          fi
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+  stress:
+    name: Full-ecosystem stress test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build contracts
+        working-directory: contracts
+        run: forge build
+
+      - name: Stress the ecosystem
+        run: pnpm stress
+        env:
+          STRESS_CURVES: 6
+          STRESS_TRADES: 40
+          STRESS_PRESALES: 4
+          STRESS_NFT_MINTS: 20
+          STRESS_TOKEN_DEPLOYS: 10
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stress-report
+          path: contracts/artifacts/stress-report.txt
+
+  secrets:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A leaked deployer key is unrecoverable: by the time it is noticed the funds are gone.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  supply-chain:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # The Ledger Connect Kit and 2025 npm hijacks both reached users through a compromised
+      # dependency rather than a flaw in the project itself. A lockfile-frozen install plus an
+      # audit gate is the minimum defence for a front-end that asks people to sign transactions.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high

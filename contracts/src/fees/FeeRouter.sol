@@ -234,11 +234,17 @@ contract FeeRouter is IFeeRouter, Ownable2Step, ReentrancyGuard {
         uint256 before = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         uint256 received = IERC20(token).balanceOf(address(this)) - before;
+        // Exact equality is correct: this rejects a transfer that delivered literally nothing,
+        // which is what a fully-taxing or non-compliant token does. Any non-zero amount is
+        // credited as-is.
+        // slither-disable-next-line incorrect-equality
         if (received == 0) revert ZeroAmount();
         _credit(product, token, creator, received);
     }
 
     function _credit(Product product, address token, address creator, uint256 amount) private {
+        // Intentionally defaults to zero: with no creator, the whole fee goes to the treasury.
+        // slither-disable-next-line uninitialized-local
         uint256 creatorAmount;
         if (creator != address(0)) {
             creatorAmount = (amount * _feeConfig[product].creatorShareBps) / BPS_DENOMINATOR;

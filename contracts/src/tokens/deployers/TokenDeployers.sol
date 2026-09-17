@@ -106,8 +106,7 @@ contract GovernanceTokenDeployer is BaseTokenDeployer {
         address recipient,
         address admin
     ) external onlyFactory returns (address) {
-        return
-            address(new GovernanceToken{salt: salt}(name, symbol, cap, initialSupply, recipient, admin));
+        return address(new GovernanceToken{salt: salt}(name, symbol, cap, initialSupply, recipient, admin));
     }
 }
 
@@ -155,8 +154,6 @@ contract ComplianceTokenDeployer is BaseTokenDeployer {
         address admin,
         bool allowlistEnabled
     ) external onlyFactory returns (address) {
-        return address(
-            new ComplianceToken{salt: salt}(name, symbol, supply, recipient, admin, allowlistEnabled)
-        );
+        return address(new ComplianceToken{salt: salt}(name, symbol, supply, recipient, admin, allowlistEnabled));
     }
 }

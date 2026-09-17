@@ -117,6 +117,12 @@ contract NftMarketplace is EIP712, ReentrancyGuard {
 
         // Move the asset first. If the seller no longer owns it or has revoked approval, the
         // whole settlement reverts before any money changes hands.
+        //
+        // Static analysis flags `from` being a variable rather than msg.sender. That is the
+        // design: `order.maker` signed the EIP-712 order authorising exactly this transfer, and
+        // `_validate` above verified that signature, checked the order is unexpired and marked it
+        // used. The authorisation is the signature, not the caller.
+        // slither-disable-next-line arbitrary-send-erc20
         IERC721(order.collection).transferFrom(order.maker, msg.sender, order.tokenId);
 
         (uint256 platformFee, uint256 royalty, address royaltyReceiver) = _split(order);
@@ -169,6 +175,10 @@ contract NftMarketplace is EIP712, ReentrancyGuard {
         (uint256 platformFee, uint256 royalty, address royaltyReceiver) = _split(order);
         uint256 toSeller = order.price - platformFee - royalty;
 
+        // As in `fulfillListing`, `order.maker` is the bidder who signed this order, and the
+        // signature `_validate` checked above is what authorises these pulls. Static analysis
+        // flags a non-msg.sender `from` without being able to see that authorisation.
+        // slither-disable-start arbitrary-send-erc20
         IERC20 currency = IERC20(order.currency);
         if (platformFee != 0) {
             currency.safeTransferFrom(order.maker, address(this), platformFee);
@@ -177,6 +187,7 @@ contract NftMarketplace is EIP712, ReentrancyGuard {
         }
         if (royalty != 0) currency.safeTransferFrom(order.maker, royaltyReceiver, royalty);
         if (toSeller != 0) currency.safeTransferFrom(order.maker, msg.sender, toSeller);
+        // slither-disable-end arbitrary-send-erc20
 
         emit OrderFilled(
             orderHash,
@@ -296,6 +307,9 @@ contract NftMarketplace is EIP712, ReentrancyGuard {
         }
     }
 
+    /// @dev `to` is either the order's maker or the royalty receiver ERC-2981 reported, never an
+    ///      address a caller chose. Static analysis cannot see that and flags it.
+    // slither-disable-next-line arbitrary-send-eth
     function _sendNative(address to, uint256 amount) private {
         (bool ok,) = to.call{value: amount}("");
         if (!ok) revert NativeTransferFailed();

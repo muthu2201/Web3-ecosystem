@@ -51,13 +51,9 @@ contract CodeSizeTest is Fixture {
         _assertFits(tokenFactory.deployerFor(TokenFactory.Template.Standard), "StandardTokenDeployer");
         _assertFits(tokenFactory.deployerFor(TokenFactory.Template.Mintable), "MintableTokenDeployer");
         _assertFits(tokenFactory.deployerFor(TokenFactory.Template.Pausable_), "PausableTokenDeployer");
-        _assertFits(
-            tokenFactory.deployerFor(TokenFactory.Template.Governance), "GovernanceTokenDeployer"
-        );
+        _assertFits(tokenFactory.deployerFor(TokenFactory.Template.Governance), "GovernanceTokenDeployer");
         _assertFits(tokenFactory.deployerFor(TokenFactory.Template.Tax), "TaxTokenDeployer");
-        _assertFits(
-            tokenFactory.deployerFor(TokenFactory.Template.Compliance), "ComplianceTokenDeployer"
-        );
+        _assertFits(tokenFactory.deployerFor(TokenFactory.Template.Compliance), "ComplianceTokenDeployer");
     }
 
     /// @dev Tokens themselves are deployed by the deployers and must also fit.
@@ -69,11 +65,7 @@ contract CodeSizeTest is Fixture {
         vm.prank(creator);
         address standard = tokenFactory.deployStandard{value: fee}(
             TokenFactory.BaseParams({
-                name: "Size",
-                symbol: "SZ",
-                supply: 1_000e18,
-                recipient: creator,
-                salt: keccak256("size")
+                name: "Size", symbol: "SZ", supply: 1000e18, recipient: creator, salt: keccak256("size")
             })
         );
         _assertFits(standard, "StandardToken");

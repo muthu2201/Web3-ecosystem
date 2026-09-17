@@ -181,6 +181,9 @@ contract BondingCurveFactory is Ownable2Step, Pausable, ReentrancyGuard {
 
     /// @dev Performs the creator's opening buy and forwards the tokens straight to them, so the
     ///      factory never retains a position in a launch it created.
+    /// @dev The value goes to a curve this function just created, and the refund goes to
+    ///      msg.sender's own overpayment. Neither destination is caller-controlled.
+    // slither-disable-next-line arbitrary-send-eth
     function _devBuy(address curveAddr, address tokenAddr, LaunchParams calldata p)
         private
         returns (uint256 devTokens)
@@ -191,8 +194,11 @@ contract BondingCurveFactory is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     /// @dev Returns overpayment plus any partial-fill refund the curve sent back.
+    // slither-disable-next-line arbitrary-send-eth
     function _refundRemainder() private {
         uint256 leftover = address(this).balance;
+        // Exact equality is correct: with nothing left over there is simply no refund to send.
+        // slither-disable-next-line incorrect-equality
         if (leftover == 0) return;
         (bool ok,) = msg.sender.call{value: leftover}("");
         if (!ok) revert RefundFailed();

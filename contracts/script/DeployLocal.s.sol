@@ -13,6 +13,7 @@ import {PresaleFactory} from "../src/launch/PresaleFactory.sol";
 import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {NftFactory} from "../src/nft/NftFactory.sol";
 import {NftMarketplace} from "../src/nft/NftMarketplace.sol";
+import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {
     ComplianceTokenDeployer,
     GovernanceTokenDeployer,
@@ -21,10 +22,7 @@ import {
     StandardTokenDeployer,
     TaxTokenDeployer
 } from "../src/tokens/deployers/TokenDeployers.sol";
-import {TokenFactory} from "../src/tokens/TokenFactory.sol";
-import {
-    MockUniswapV2Factory, MockUniswapV2Router02, MockWETH
-} from "../test/mocks/UniswapV2.sol";
+import {MockUniswapV2Factory, MockUniswapV2Router02, MockWETH} from "../test/mocks/UniswapV2.sol";
 import {Script} from "forge-std/Script.sol";
 
 /// @title DeployLocal
@@ -45,8 +43,7 @@ contract DeployLocal is Script {
 
         MockWETH weth = new MockWETH();
         MockUniswapV2Factory dexFactory = new MockUniswapV2Factory();
-        MockUniswapV2Router02 dexRouter =
-            new MockUniswapV2Router02(address(dexFactory), address(weth));
+        MockUniswapV2Router02 dexRouter = new MockUniswapV2Router02(address(dexFactory), address(weth));
 
         // 24h is the contract's minimum timelock; the tests warp past it.
         FeeRouter feeRouter = new FeeRouter(deployer, deployer, 0.01 ether, 24 hours);
@@ -66,17 +63,14 @@ contract DeployLocal is Script {
         NftFactory nftFactory = new NftFactory(deployer, feeRouter);
         NftMarketplace marketplace = new NftMarketplace(feeRouter);
 
-        BondingCurveFactory curveFactory =
-            new BondingCurveFactory(deployer, feeRouter, _curveConfig());
-        BondingCurve curveImpl = new BondingCurve(
-            address(curveFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker
-        );
+        BondingCurveFactory curveFactory = new BondingCurveFactory(deployer, feeRouter, _curveConfig());
+        BondingCurve curveImpl =
+            new BondingCurve(address(curveFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker);
         curveFactory.setCurveImplementation(address(curveImpl));
 
         PresaleFactory presaleFactory = new PresaleFactory(deployer, feeRouter);
-        Presale presaleImpl = new Presale(
-            address(presaleFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker
-        );
+        Presale presaleImpl =
+            new Presale(address(presaleFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker);
         presaleFactory.setPresaleImplementation(address(presaleImpl));
 
         _proposeFees(feeRouter);
@@ -106,14 +100,14 @@ contract DeployLocal is Script {
             virtualTokenStart: 1_073_000_000e18,
             antiSnipeWindow: 60,
             maxBuyDuringWindow: 0.5 ether,
-            devBuyCapBps: 2_000
+            devBuyCapBps: 2000
         });
     }
 
     /// @dev Queues every fee. The caller warps past the timelock and executes them.
     function _proposeFees(FeeRouter feeRouter) internal {
         _propose(feeRouter, IFeeRouter.Product.TokenDeploy, 0, 0, 0.002 ether);
-        _propose(feeRouter, IFeeRouter.Product.BondingCurveTrade, 100, 5_000, 0);
+        _propose(feeRouter, IFeeRouter.Product.BondingCurveTrade, 100, 5000, 0);
         _propose(feeRouter, IFeeRouter.Product.Graduation, 0, 0, 0.003 ether);
         _propose(feeRouter, IFeeRouter.Product.Swap, 25, 0, 0);
         _propose(feeRouter, IFeeRouter.Product.Presale, 200, 0, 0);
@@ -123,13 +117,9 @@ contract DeployLocal is Script {
         _propose(feeRouter, IFeeRouter.Product.NftMarketplace, 50, 0, 0);
     }
 
-    function _propose(
-        FeeRouter feeRouter,
-        IFeeRouter.Product p,
-        uint16 bps,
-        uint16 creatorShareBps,
-        uint128 flat
-    ) internal {
+    function _propose(FeeRouter feeRouter, IFeeRouter.Product p, uint16 bps, uint16 creatorShareBps, uint128 flat)
+        internal
+    {
         feeRouter.proposeFeeConfig(
             p, IFeeRouter.FeeConfig({bps: bps, creatorShareBps: creatorShareBps, flatNative: flat})
         );

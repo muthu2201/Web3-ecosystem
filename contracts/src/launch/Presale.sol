@@ -215,6 +215,14 @@ contract Presale is ReentrancyGuardTransient {
         return _tokensNeeded(p);
     }
 
+    /// @dev The division before multiplication is deliberate and load-bearing. `_seedPool`
+    ///      computes the pool's token amount with exactly the same two steps and the same
+    ///      truncation at each one, and the function is monotonically non-decreasing in the
+    ///      raise. Since the raise can never exceed the hard cap, funding computed here always
+    ///      covers what finalisation actually consumes. Reordering for precision would make this
+    ///      figure disagree with the one the contract later uses, which is the failure this
+    ///      arrangement avoids.
+    // slither-disable-next-line divide-before-multiply
     function _tokensNeeded(Params calldata p) private pure returns (uint256) {
         uint256 forBuyers = (p.hardCap * p.tokensPerNative) / 1e18;
         uint256 nativeToPool = (p.hardCap * p.liquidityBps) / 10_000;
@@ -307,7 +315,8 @@ contract Presale is ReentrancyGuardTransient {
         if (liquidity == 0) revert NoLiquidityMinted();
 
         if (lockLpInsteadOfBurn) {
-            IUniswapV2Pair(pair).approve(address(locker), liquidity);
+            // See BondingCurve._graduate: checked approval, for the same reason.
+            IERC20(pair).forceApprove(address(locker), liquidity);
             lockId = locker.lock(pair, liquidity, uint64(block.timestamp) + lpLockDuration, owner);
         }
     }
@@ -416,6 +425,9 @@ contract Presale is ReentrancyGuardTransient {
         return (totalRaised * tokensPerNative) / 1e18;
     }
 
+    /// @dev `to` is the sale owner on finalise, or the caller reclaiming their own contribution
+    ///      on refund. Never an address supplied by an untrusted caller.
+    // slither-disable-next-line arbitrary-send-eth
     function _sendNative(address to, uint256 amount) private {
         (bool ok,) = to.call{value: amount}("");
         if (!ok) revert NativeTransferFailed();

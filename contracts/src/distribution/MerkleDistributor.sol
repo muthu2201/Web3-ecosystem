@@ -88,6 +88,10 @@ contract MerkleDistributor is ReentrancyGuard {
         uint256 before = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), totalAmount);
         uint256 received = IERC20(token).balanceOf(address(this)) - before;
+        // Exact equality is correct: this rejects a transfer that delivered literally nothing,
+        // which is what a fully-taxing or non-compliant token does. Any non-zero amount is
+        // credited as-is.
+        // slither-disable-next-line incorrect-equality
         if (received == 0) revert ZeroAmount();
 
         distributionId = _nextDistributionId++;
