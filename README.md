@@ -197,6 +197,34 @@ Additionally, **differential tests** run 160 generated cases through both the So
 library and its TypeScript port and require byte-exact equality, so the price the interface quotes
 is the price the chain will produce.
 
+## Why Base and BNB Chain, and not Ethereum
+
+Ethereum mainnet is deliberately absent from the chain registry. Measured against live gas prices
+and live token prices on 17 September 2026, with gas figures taken from the local deployment and
+the stress harness rather than estimated:
+
+| Operation | Ethereum | Base | BNB Chain |
+| --- | --- | --- | --- |
+| Full platform deploy (one-off) | $31.90 | **$0.37** | $0.91 |
+| Deploy a token | $1.08 | **$0.0125** | $0.0308 |
+| Launch a bonding curve | $2.04 | **$0.0236** | $0.0580 |
+| Buy on the curve | $0.23 | **$0.0027** | $0.0065 |
+| Graduate to a DEX pool | $1.40 | **$0.0162** | $0.0399 |
+| Mint an NFT | $0.15 | **$0.0018** | $0.0044 |
+
+That snapshot *flatters* Ethereum: it was taken at 0.52 gwei, which is unusually cheap. At a more
+typical 30 gwei the deploy is roughly $1,840 and a curve launch roughly $118.
+
+The launch fee is the whole argument. This platform exists so people can launch cheap,
+experimental tokens, most of which will fail — the honest graduation rate is 0.4-3%, stated on the
+launch page. A $118 launch cost dwarfs the platform's own fee and changes what the product *is*:
+it stops being somewhere you can try something and becomes somewhere only a funded team bothers.
+Base at $0.02 keeps the economics the design assumes.
+
+Adding a chain is a data change, not a code change (see `packages/chain-registry`). Anything added
+needs a V2-compatible DEX — see `supportsV2PoolCreation` — and should clear this same cost test
+before it ships.
+
 ## Branches and dependencies
 
 Two branches, permanently:
