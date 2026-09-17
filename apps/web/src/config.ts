@@ -27,6 +27,16 @@ export const SWAP_FEE_BPS = Number(import.meta.env.VITE_SWAP_FEE_BPS ?? 25);
 export const FEE_RECIPIENT = (import.meta.env.VITE_FEE_RECIPIENT ??
   '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
+/**
+ * Which set of chains this build targets. Never both at once - see wagmi.ts for why.
+ *
+ * Anything other than the literal "testnet" means mainnet, so a typo or a missing variable fails
+ * towards production rather than silently shipping a testnet build to real users.
+ */
+export const CHAIN_MODE: 'mainnet' | 'testnet' =
+  import.meta.env.VITE_CHAIN_MODE === 'testnet' ? 'testnet' : 'mainnet';
+
+/** Kept for callers that want the mainnet pair regardless of build mode. */
 export const SUPPORTED_CHAINS: readonly Caip2[] = [evmCaip2(8453), evmCaip2(56)];
 
 /**

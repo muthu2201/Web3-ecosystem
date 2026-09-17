@@ -103,6 +103,19 @@ Three properties hold on every one of them:
   byte-for-byte against the Solidity library, so a price can update per keystroke without an RPC
   round trip and still be the number the chain produces.
 
+One build targets one chain set, chosen by `VITE_CHAIN_MODE`:
+
+| `VITE_CHAIN_MODE` | Chains the interface can reach |
+| --- | --- |
+| unset (default) | Base, BNB Chain |
+| `testnet` | BSC Testnet, Base Sepolia |
+
+Never both. A visitor to the production site is never offered a testnet, so a token launched on
+one cannot appear beside a real token in a listing; and a test build carries no mainnet chain, so
+a misclick cannot spend real funds. The chain registry still holds all four entries as data in
+either build - what changes is the set wagmi is configured with, which is the set the interface
+can actually reach. `apps/web/src/wagmi.test.ts` asserts both directions.
+
 Run it locally with `pnpm --filter @web3eco/web dev`. It needs `VITE_DEPLOYMENTS` to reach any
 contract; without it, every contract-backed route says so plainly instead of failing obscurely.
 
