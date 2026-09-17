@@ -2,10 +2,10 @@
 pragma solidity 0.8.30;
 
 import {IFeeRouter} from "./IFeeRouter.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title FeeRouter
@@ -71,12 +71,9 @@ contract FeeRouter is IFeeRouter, Ownable2Step, ReentrancyGuard {
     /// @param initialTreasury Safe multisig that receives the platform's share.
     /// @param flatNativeHardCap_ Per-chain ceiling for flat fees, bounded by ABSOLUTE_FLAT_NATIVE_CEILING.
     /// @param timelockDelay_ Delay between proposing and executing any parameter change.
-    constructor(
-        address initialOwner,
-        address initialTreasury,
-        uint256 flatNativeHardCap_,
-        uint64 timelockDelay_
-    ) Ownable(initialOwner) {
+    constructor(address initialOwner, address initialTreasury, uint256 flatNativeHardCap_, uint64 timelockDelay_)
+        Ownable(initialOwner)
+    {
         if (initialTreasury == address(0)) revert ZeroAddress();
         if (flatNativeHardCap_ > ABSOLUTE_FLAT_NATIVE_CEILING) {
             revert FeeExceedsHardCap(flatNativeHardCap_, ABSOLUTE_FLAT_NATIVE_CEILING);

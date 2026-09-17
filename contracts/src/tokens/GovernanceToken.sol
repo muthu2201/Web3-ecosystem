@@ -88,10 +88,7 @@ contract GovernanceToken is
         return "mode=timestamp";
     }
 
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Capped, ERC20Votes)
-    {
+    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Capped, ERC20Votes) {
         super._update(from, to, value);
     }
 

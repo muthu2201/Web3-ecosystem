@@ -96,9 +96,7 @@ contract CurveInvariantTest is Fixture {
     ///      the curve is being drained.
     function invariant_TradersNeverExtractMoreThanTheyPutIn() public view {
         assertLe(
-            handler.ghostNativeOut(),
-            handler.ghostNativeIn(),
-            "aggregate payout must never exceed aggregate deposits"
+            handler.ghostNativeOut(), handler.ghostNativeIn(), "aggregate payout must never exceed aggregate deposits"
         );
     }
 
@@ -113,8 +111,7 @@ contract CurveInvariantTest is Fixture {
 
     /// @dev Fees credited to the router must always be backed by real native currency held there.
     function invariant_FeeRouterIsSolvent() public view {
-        uint256 credited =
-            feeRouter.balanceOf(treasury, address(0)) + feeRouter.balanceOf(creator, address(0));
+        uint256 credited = feeRouter.balanceOf(treasury, address(0)) + feeRouter.balanceOf(creator, address(0));
         assertLe(credited, address(feeRouter).balance, "router owes more than it holds");
     }
 
@@ -133,10 +130,6 @@ contract CurveInvariantTest is Fixture {
         // rather than the whole campaign. The assertion is therefore that EVERY run is
         // substantive, which is the stronger property and the reason buy sizing is tuned
         // against the graduation target in the handler.
-        assertGt(
-            handler.graduationCount(),
-            0,
-            "no curve reached graduation - the migration path was never exercised"
-        );
+        assertGt(handler.graduationCount(), 0, "no curve reached graduation - the migration path was never exercised");
     }
 }

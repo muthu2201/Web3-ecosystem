@@ -28,11 +28,7 @@ contract PresaleFactory is Ownable2Step, Pausable, ReentrancyGuard {
     address[] private _allPresales;
 
     event PresaleCreated(
-        address indexed presale,
-        address indexed token,
-        address indexed owner,
-        uint256 tokensFunded,
-        bool isFairLaunch
+        address indexed presale, address indexed token, address indexed owner, uint256 tokensFunded, bool isFairLaunch
     );
     event PresaleImplementationSet(address indexed implementation);
 
@@ -69,9 +65,7 @@ contract PresaleFactory is Ownable2Step, Pausable, ReentrancyGuard {
         if (presaleImplementation == address(0)) revert ImplementationNotSet();
         if (p.token == address(0)) revert ZeroAddress();
 
-        presale = LibClone.cloneDeterministic(
-            presaleImplementation, keccak256(abi.encode(msg.sender, salt))
-        );
+        presale = LibClone.cloneDeterministic(presaleImplementation, keccak256(abi.encode(msg.sender, salt)));
 
         // Fund the clone directly from the creator. Credit what actually arrived, so a
         // fee-on-transfer sale token cannot open a sale it is unable to settle.

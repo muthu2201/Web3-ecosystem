@@ -31,7 +31,7 @@ contract DistributionTest is Fixture {
     ///      no emergency path - those functions do not exist on this contract.
     function testFuzz_LockedTokensAreUnreachableBeforeUnlock(uint64 warpTo) public {
         uint64 until = uint64(block.timestamp + 365 days);
-        uint256 lockId = _lock(1_000e18, until);
+        uint256 lockId = _lock(1000e18, until);
 
         warpTo = uint64(bound(warpTo, block.timestamp, until - 1));
         vm.warp(warpTo);
@@ -39,12 +39,12 @@ contract DistributionTest is Fixture {
         vm.prank(creator);
         vm.expectRevert(abi.encodeWithSelector(LiquidityLocker.StillLocked.selector, lockId, until));
         locker.withdraw(lockId, 1, creator);
-        assertEq(token.balanceOf(address(locker)), 1_000e18);
+        assertEq(token.balanceOf(address(locker)), 1000e18);
     }
 
     function test_WithdrawAfterUnlock() public {
         uint64 until = uint64(block.timestamp + 30 days);
-        uint256 lockId = _lock(1_000e18, until);
+        uint256 lockId = _lock(1000e18, until);
         vm.warp(until);
 
         uint256 before = token.balanceOf(creator);
@@ -57,7 +57,7 @@ contract DistributionTest is Fixture {
 
     function test_OnlyLockOwnerCanWithdraw() public {
         uint64 until = uint64(block.timestamp + 1 days);
-        uint256 lockId = _lock(1_000e18, until);
+        uint256 lockId = _lock(1000e18, until);
         vm.warp(until);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(LiquidityLocker.NotLockOwner.selector, lockId, alice));
@@ -66,19 +66,17 @@ contract DistributionTest is Fixture {
 
     function testFuzz_ExtendCanOnlyPushUnlockLater(uint64 newTime) public {
         uint64 until = uint64(block.timestamp + 30 days);
-        uint256 lockId = _lock(1_000e18, until);
+        uint256 lockId = _lock(1000e18, until);
 
         newTime = uint64(bound(newTime, 0, until));
         vm.prank(creator);
-        vm.expectRevert(
-            abi.encodeWithSelector(LiquidityLocker.CannotShortenLock.selector, until, newTime)
-        );
+        vm.expectRevert(abi.encodeWithSelector(LiquidityLocker.CannotShortenLock.selector, until, newTime));
         locker.extend(lockId, newTime);
     }
 
     function test_ExtendWorksForwards() public {
         uint64 until = uint64(block.timestamp + 30 days);
-        uint256 lockId = _lock(1_000e18, until);
+        uint256 lockId = _lock(1000e18, until);
         vm.prank(creator);
         locker.extend(lockId, until + 30 days);
         assertEq(locker.getLock(lockId).unlockTime, until + 30 days);
@@ -86,35 +84,33 @@ contract DistributionTest is Fixture {
 
     function test_TopUpDoesNotChangeUnlockTime() public {
         uint64 until = uint64(block.timestamp + 30 days);
-        uint256 lockId = _lock(1_000e18, until);
+        uint256 lockId = _lock(1000e18, until);
 
         vm.startPrank(creator);
         token.approve(address(locker), 500e18);
         locker.topUp(lockId, 500e18);
         vm.stopPrank();
 
-        assertEq(locker.getLock(lockId).amount, 1_500e18);
+        assertEq(locker.getLock(lockId).amount, 1500e18);
         assertEq(locker.getLock(lockId).unlockTime, until, "top-up must not move the unlock time");
     }
 
     function test_LockOwnershipTransfer() public {
         uint64 until = uint64(block.timestamp + 1 days);
-        uint256 lockId = _lock(1_000e18, until);
+        uint256 lockId = _lock(1000e18, until);
         vm.prank(creator);
         locker.transferLockOwnership(lockId, alice);
 
         vm.warp(until);
         vm.prank(alice);
-        locker.withdraw(lockId, 1_000e18, alice);
-        assertEq(token.balanceOf(alice), 1_000e18);
+        locker.withdraw(lockId, 1000e18, alice);
+        assertEq(token.balanceOf(alice), 1000e18);
     }
 
     function test_LockRejectsPastUnlockTime() public {
         vm.startPrank(creator);
         token.approve(address(locker), 1e18);
-        vm.expectRevert(
-            abi.encodeWithSelector(LiquidityLocker.UnlockTimeInPast.selector, uint64(block.timestamp))
-        );
+        vm.expectRevert(abi.encodeWithSelector(LiquidityLocker.UnlockTimeInPast.selector, uint64(block.timestamp)));
         locker.lock(address(token), 1e18, uint64(block.timestamp), creator);
         vm.stopPrank();
     }
@@ -130,10 +126,10 @@ contract DistributionTest is Fixture {
 
     function test_LockCreditsAmountActuallyReceived() public {
         FeeOnTransferERC20 fot = new FeeOnTransferERC20(500); // 5% burn
-        fot.mint(creator, 1_000e18);
+        fot.mint(creator, 1000e18);
         vm.startPrank(creator);
-        fot.approve(address(locker), 1_000e18);
-        uint256 lockId = locker.lock(address(fot), 1_000e18, uint64(block.timestamp + 1 days), creator);
+        fot.approve(address(locker), 1000e18);
+        uint256 lockId = locker.lock(address(fot), 1000e18, uint64(block.timestamp + 1 days), creator);
         vm.stopPrank();
 
         assertEq(locker.getLock(lockId).amount, 950e18, "records what arrived, not what was asked");
@@ -152,10 +148,7 @@ contract DistributionTest is Fixture {
     // TokenVesting
     // =================================================================
 
-    function _schedule(uint256 amount, uint64 cliff, uint64 duration, bool revocable)
-        internal
-        returns (uint256 id)
-    {
+    function _schedule(uint256 amount, uint64 cliff, uint64 duration, bool revocable) internal returns (uint256 id) {
         vm.startPrank(creator);
         token.approve(address(vesting), amount);
         id = vesting.createSchedule(
@@ -165,7 +158,7 @@ contract DistributionTest is Fixture {
     }
 
     function test_NothingVestsBeforeTheCliff() public {
-        uint256 id = _schedule(1_000e18, 90 days, 360 days, false);
+        uint256 id = _schedule(1000e18, 90 days, 360 days, false);
         vm.warp(block.timestamp + 89 days);
         assertEq(vesting.releasable(id), 0);
 
@@ -178,7 +171,7 @@ contract DistributionTest is Fixture {
     ///      linearly from the original start.
     function test_CliffUnlocksAccruedPortionThenVestsLinearly() public {
         uint256 start = vm.getBlockTimestamp();
-        uint256 id = _schedule(1_000e18, 90 days, 360 days, false);
+        uint256 id = _schedule(1000e18, 90 days, 360 days, false);
 
         vm.warp(start + 90 days);
         assertEq(vesting.vestedAmount(id), 250e18, "90/360 accrued at the cliff");
@@ -187,12 +180,12 @@ contract DistributionTest is Fixture {
         assertEq(vesting.vestedAmount(id), 500e18);
 
         vm.warp(start + 360 days);
-        assertEq(vesting.vestedAmount(id), 1_000e18);
+        assertEq(vesting.vestedAmount(id), 1000e18);
     }
 
     function testFuzz_VestedNeverExceedsTotalAndNeverDecreases(uint64 t1, uint64 t2) public {
         uint256 start = vm.getBlockTimestamp();
-        uint256 id = _schedule(1_000e18, 30 days, 360 days, false);
+        uint256 id = _schedule(1000e18, 30 days, 360 days, false);
 
         t1 = uint64(bound(t1, start, start + 720 days));
         t2 = uint64(bound(t2, t1, start + 720 days));
@@ -202,13 +195,13 @@ contract DistributionTest is Fixture {
         vm.warp(t2);
         uint256 v2 = vesting.vestedAmount(id);
 
-        assertLe(v2, 1_000e18, "never over-vests");
+        assertLe(v2, 1000e18, "never over-vests");
         assertGe(v2, v1, "vesting never goes backwards");
     }
 
     function test_ReleaseTransfersExactlyWhatVested() public {
         uint256 start = vm.getBlockTimestamp();
-        uint256 id = _schedule(1_000e18, 0, 100 days, false);
+        uint256 id = _schedule(1000e18, 0, 100 days, false);
 
         vm.warp(start + 50 days);
         vm.prank(alice);
@@ -218,13 +211,13 @@ contract DistributionTest is Fixture {
         vm.warp(start + 100 days);
         vm.prank(alice);
         vesting.release(id);
-        assertEq(token.balanceOf(alice), 1_000e18);
+        assertEq(token.balanceOf(alice), 1000e18);
     }
 
     /// @dev Revocation must never reach tokens that have already vested.
     function testFuzz_RevokeNeverClawsBackVestedTokens(uint64 at) public {
         uint256 start = vm.getBlockTimestamp();
-        uint256 id = _schedule(1_000e18, 0, 100 days, true);
+        uint256 id = _schedule(1000e18, 0, 100 days, true);
 
         at = uint64(bound(at, start, start + 100 days));
         vm.warp(at);
@@ -233,7 +226,7 @@ contract DistributionTest is Fixture {
         vm.prank(creator);
         uint256 returned = vesting.revoke(id);
 
-        assertEq(returned, 1_000e18 - vestedBefore, "only the unvested remainder returns");
+        assertEq(returned, 1000e18 - vestedBefore, "only the unvested remainder returns");
         assertEq(vesting.vestedAmount(id), vestedBefore, "vested amount is untouched");
 
         if (vestedBefore > 0) {
@@ -244,14 +237,14 @@ contract DistributionTest is Fixture {
     }
 
     function test_NonRevocableScheduleCannotBeRevoked() public {
-        uint256 id = _schedule(1_000e18, 0, 100 days, false);
+        uint256 id = _schedule(1000e18, 0, 100 days, false);
         vm.prank(creator);
         vm.expectRevert(abi.encodeWithSelector(TokenVesting.NotRevocable.selector, id));
         vesting.revoke(id);
     }
 
     function test_OnlyGrantorCanRevoke() public {
-        uint256 id = _schedule(1_000e18, 0, 100 days, true);
+        uint256 id = _schedule(1000e18, 0, 100 days, true);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(TokenVesting.NotGrantor.selector, id, alice));
         vesting.revoke(id);
@@ -261,32 +254,28 @@ contract DistributionTest is Fixture {
         vm.startPrank(creator);
         token.approve(address(vesting), 1e18);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TokenVesting.CliffExceedsDuration.selector, uint64(200 days), uint64(100 days)
-            )
+            abi.encodeWithSelector(TokenVesting.CliffExceedsDuration.selector, uint64(200 days), uint64(100 days))
         );
-        vesting.createSchedule(
-            address(token), alice, 1e18, uint64(block.timestamp), 200 days, 100 days, false
-        );
+        vesting.createSchedule(address(token), alice, 1e18, uint64(block.timestamp), 200 days, 100 days, false);
         vm.stopPrank();
     }
 
     function test_BeneficiaryTransfer() public {
         uint256 start = vm.getBlockTimestamp();
-        uint256 id = _schedule(1_000e18, 0, 100 days, false);
+        uint256 id = _schedule(1000e18, 0, 100 days, false);
         vm.prank(alice);
         vesting.transferBeneficiary(id, bob);
 
         vm.warp(start + 100 days);
         vm.prank(bob);
         vesting.release(id);
-        assertEq(token.balanceOf(bob), 1_000e18);
+        assertEq(token.balanceOf(bob), 1000e18);
     }
 
     /// @dev Contract solvency: committed obligations must never exceed the real balance.
     function test_CommittedNeverExceedsBalance() public {
-        _schedule(1_000e18, 0, 100 days, false);
-        _schedule(2_000e18, 30 days, 200 days, true);
+        _schedule(1000e18, 0, 100 days, false);
+        _schedule(2000e18, 30 days, 200 days, true);
         assertLe(vesting.totalCommitted(address(token)), token.balanceOf(address(vesting)));
     }
 
@@ -301,9 +290,7 @@ contract DistributionTest is Fixture {
     {
         leafA = distributor.leafFor(0, a, amtA);
         leafB = distributor.leafFor(1, b, amtB);
-        root = leafA < leafB
-            ? keccak256(abi.encodePacked(leafA, leafB))
-            : keccak256(abi.encodePacked(leafB, leafA));
+        root = leafA < leafB ? keccak256(abi.encodePacked(leafA, leafB)) : keccak256(abi.encodePacked(leafB, leafA));
     }
 
     function test_ClaimPaysTheListedAccountAndOnlyOnce() public {
@@ -311,9 +298,8 @@ contract DistributionTest is Fixture {
 
         vm.startPrank(creator);
         token.approve(address(distributor), 300e18);
-        uint256 id = distributor.createDistribution(
-            address(token), root, 300e18, 0, uint64(block.timestamp + 30 days)
-        );
+        uint256 id =
+            distributor.createDistribution(address(token), root, 300e18, 0, uint64(block.timestamp + 30 days));
         vm.stopPrank();
 
         bytes32[] memory proofA = new bytes32[](1);
@@ -341,9 +327,8 @@ contract DistributionTest is Fixture {
         (bytes32 root,, bytes32 leafB) = _buildTree(alice, 100e18, bob, 200e18);
         vm.startPrank(creator);
         token.approve(address(distributor), 300e18);
-        uint256 id = distributor.createDistribution(
-            address(token), root, 300e18, 0, uint64(block.timestamp + 30 days)
-        );
+        uint256 id =
+            distributor.createDistribution(address(token), root, 300e18, 0, uint64(block.timestamp + 30 days));
         vm.stopPrank();
 
         bytes32[] memory proofA = new bytes32[](1);
@@ -358,9 +343,8 @@ contract DistributionTest is Fixture {
         (bytes32 root,, bytes32 leafB) = _buildTree(alice, 100e18, bob, 200e18);
         vm.startPrank(creator);
         token.approve(address(distributor), 300e18);
-        uint256 id = distributor.createDistribution(
-            address(token), root, 300e18, 0, uint64(block.timestamp + 30 days)
-        );
+        uint256 id =
+            distributor.createDistribution(address(token), root, 300e18, 0, uint64(block.timestamp + 30 days));
         vm.stopPrank();
 
         bytes32[] memory proofA = new bytes32[](1);
@@ -385,9 +369,8 @@ contract DistributionTest is Fixture {
         (bytes32 root,, bytes32 leafB) = _buildTree(alice, 100e18, bob, 200e18);
         vm.startPrank(creator);
         token.approve(address(distributor), 300e18);
-        uint256 id = distributor.createDistribution(
-            address(token), root, 300e18, 0, uint64(block.timestamp + 30 days)
-        );
+        uint256 id =
+            distributor.createDistribution(address(token), root, 300e18, 0, uint64(block.timestamp + 30 days));
         vm.stopPrank();
 
         bytes32[] memory proofA = new bytes32[](1);
@@ -414,9 +397,8 @@ contract DistributionTest is Fixture {
         (bytes32 root,, bytes32 leafB) = _buildTree(alice, 100e18, bob, 200e18);
         vm.startPrank(creator);
         token.approve(address(distributor), 300e18);
-        uint256 id = distributor.createDistribution(
-            address(token), root, 300e18, 0, uint64(block.timestamp + 30 days)
-        );
+        uint256 id =
+            distributor.createDistribution(address(token), root, 300e18, 0, uint64(block.timestamp + 30 days));
         vm.stopPrank();
 
         vm.warp(block.timestamp + 31 days);
@@ -433,9 +415,8 @@ contract DistributionTest is Fixture {
         (bytes32 root,,) = _buildTree(alice, 100e18, bob, 200e18);
         vm.startPrank(creator);
         token.approve(address(distributor), 300e18);
-        uint256 id = distributor.createDistribution(
-            address(token), root, 300e18, 0, uint64(block.timestamp + 30 days)
-        );
+        uint256 id =
+            distributor.createDistribution(address(token), root, 300e18, 0, uint64(block.timestamp + 30 days));
         vm.stopPrank();
 
         assertFalse(distributor.isClaimed(id, i));

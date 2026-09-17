@@ -30,13 +30,10 @@ contract PausableToken is ERC20, ERC20Burnable, ERC20Pausable, ERC20Permit, Acce
     error ZeroSupply();
     error PauseAlreadyRenounced();
 
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint256 supply,
-        address recipient,
-        address admin
-    ) ERC20(name_, symbol_) ERC20Permit(name_) {
+    constructor(string memory name_, string memory symbol_, uint256 supply, address recipient, address admin)
+        ERC20(name_, symbol_)
+        ERC20Permit(name_)
+    {
         if (recipient == address(0) || admin == address(0)) revert ZeroAddress();
         if (supply == 0) revert ZeroSupply();
         deployer = msg.sender;

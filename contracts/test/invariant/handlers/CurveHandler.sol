@@ -41,12 +41,7 @@ contract CurveHandler is CommonBase, StdCheats, StdUtils {
     uint256 public launchCount;
     uint256 public graduationCount;
 
-    constructor(
-        BondingCurveFactory factory_,
-        IFeeRouter feeRouter_,
-        address creator_,
-        address[] memory actors_
-    ) {
+    constructor(BondingCurveFactory factory_, IFeeRouter feeRouter_, address creator_, address[] memory actors_) {
         factory = factory_;
         feeRouter = feeRouter_;
         creator = creator_;

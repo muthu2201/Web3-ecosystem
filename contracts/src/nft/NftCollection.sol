@@ -4,11 +4,11 @@ pragma solidity 0.8.30;
 import {IFeeRouter} from "../fees/IFeeRouter.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title NftCollection
 /// @notice ERC-721 collection with phased public and allowlist minting.
@@ -27,7 +27,7 @@ contract NftCollection is ERC721, ERC2981, Ownable2Step, ReentrancyGuard {
     using Strings for uint256;
 
     /// @dev Ceiling on secondary royalties, in basis points.
-    uint96 public constant MAX_ROYALTY_BPS = 1_000; // 10%
+    uint96 public constant MAX_ROYALTY_BPS = 1000; // 10%
 
     struct Phase {
         bytes32 merkleRoot; // zero for a public phase
@@ -128,8 +128,7 @@ contract NftCollection is ERC721, ERC2981, Ownable2Step, ReentrancyGuard {
         if (quantity > remaining) revert MaxSupplyExceeded(quantity, remaining);
 
         if (phase.maxSupply != 0) {
-            uint256 phaseRemaining =
-                phase.maxSupply > totalMinted ? phase.maxSupply - totalMinted : 0;
+            uint256 phaseRemaining = phase.maxSupply > totalMinted ? phase.maxSupply - totalMinted : 0;
             if (quantity > phaseRemaining) revert PhaseSupplyExceeded(quantity, phaseRemaining);
         }
 
@@ -219,9 +218,7 @@ contract NftCollection is ERC721, ERC2981, Ownable2Step, ReentrancyGuard {
     /// @inheritdoc ERC721
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
-        return bytes(_baseTokenURI).length == 0
-            ? ""
-            : string.concat(_baseTokenURI, tokenId.toString());
+        return bytes(_baseTokenURI).length == 0 ? "" : string.concat(_baseTokenURI, tokenId.toString());
     }
 
     /// @notice ERC-7572 collection-level metadata.

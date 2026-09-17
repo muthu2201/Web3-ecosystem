@@ -21,7 +21,7 @@ contract FeeRouterTest is Test {
 
     function setUp() public {
         router = new FeeRouter(owner, treasury, FLAT_CAP, DELAY);
-        vm.deal(payer, 1_000 ether);
+        vm.deal(payer, 1000 ether);
     }
 
     function _setConfig(IFeeRouter.Product p, uint16 bps, uint16 creatorShareBps, uint128 flat) internal {
@@ -58,9 +58,7 @@ contract FeeRouterTest is Test {
 
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(IFeeRouter.FeeExceedsHardCap.selector, bps, cap));
-        router.proposeFeeConfig(
-            p, IFeeRouter.FeeConfig({bps: bps, creatorShareBps: 0, flatNative: 0})
-        );
+        router.proposeFeeConfig(p, IFeeRouter.FeeConfig({bps: bps, creatorShareBps: 0, flatNative: 0}));
     }
 
     function testFuzz_CanProposeAtOrBelowCap(uint8 rawProduct, uint16 bps) public {
@@ -79,8 +77,7 @@ contract FeeRouterTest is Test {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(IFeeRouter.FeeExceedsHardCap.selector, flat, FLAT_CAP));
         router.proposeFeeConfig(
-            IFeeRouter.Product.TokenDeploy,
-            IFeeRouter.FeeConfig({bps: 0, creatorShareBps: 0, flatNative: flat})
+            IFeeRouter.Product.TokenDeploy, IFeeRouter.FeeConfig({bps: 0, creatorShareBps: 0, flatNative: flat})
         );
     }
 
@@ -204,7 +201,7 @@ contract FeeRouterTest is Test {
     }
 
     function test_NullCreatorSendsEverythingToTreasury() public {
-        _setConfig(IFeeRouter.Product.BondingCurveTrade, 100, 5_000, 0);
+        _setConfig(IFeeRouter.Product.BondingCurveTrade, 100, 5000, 0);
         vm.prank(payer);
         router.routeNative{value: 1 ether}(IFeeRouter.Product.BondingCurveTrade, address(0));
         assertEq(router.balanceOf(treasury, address(0)), 1 ether);
@@ -234,27 +231,23 @@ contract FeeRouterTest is Test {
         router.routeERC20(IFeeRouter.Product.Swap, address(token), creator, amount);
         vm.stopPrank();
 
-        assertEq(
-            router.balanceOf(creator, address(token)) + router.balanceOf(treasury, address(token)),
-            amount
-        );
+        assertEq(router.balanceOf(creator, address(token)) + router.balanceOf(treasury, address(token)), amount);
         assertEq(token.balanceOf(address(router)), amount);
     }
 
     /// @dev Internal accounting must never exceed the router's real balance, or the last
     ///      withdrawer is left unable to withdraw.
     function test_FeeOnTransferTokenCreditsOnlyWhatArrived() public {
-        _setConfig(IFeeRouter.Product.Swap, 25, 5_000, 0);
+        _setConfig(IFeeRouter.Product.Swap, 25, 5000, 0);
         FeeOnTransferERC20 fot = new FeeOnTransferERC20(500); // 5% burn on transfer
-        fot.mint(payer, 1_000e18);
+        fot.mint(payer, 1000e18);
 
         vm.startPrank(payer);
-        fot.approve(address(router), 1_000e18);
-        router.routeERC20(IFeeRouter.Product.Swap, address(fot), creator, 1_000e18);
+        fot.approve(address(router), 1000e18);
+        router.routeERC20(IFeeRouter.Product.Swap, address(fot), creator, 1000e18);
         vm.stopPrank();
 
-        uint256 credited =
-            router.balanceOf(creator, address(fot)) + router.balanceOf(treasury, address(fot));
+        uint256 credited = router.balanceOf(creator, address(fot)) + router.balanceOf(treasury, address(fot));
         assertEq(credited, 950e18, "credited the amount actually received");
         assertEq(fot.balanceOf(address(router)), 950e18);
         assertLe(credited, fot.balanceOf(address(router)), "accounting never exceeds real balance");
@@ -271,7 +264,7 @@ contract FeeRouterTest is Test {
     // -----------------------------------------------------------------
 
     function test_WithdrawNativePullsAndZeroes() public {
-        _setConfig(IFeeRouter.Product.BondingCurveTrade, 100, 5_000, 0);
+        _setConfig(IFeeRouter.Product.BondingCurveTrade, 100, 5000, 0);
         vm.prank(payer);
         router.routeNative{value: 2 ether}(IFeeRouter.Product.BondingCurveTrade, creator);
 

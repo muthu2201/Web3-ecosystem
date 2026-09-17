@@ -30,7 +30,7 @@ contract BondingCurveFactory is Ownable2Step, Pausable, ReentrancyGuard {
     /// @dev Hard ceiling on how much of a launch's eventual raise the creator may buy up front.
     ///      Compiled in, so no configuration change can let a creator front-run their own launch
     ///      harder than this.
-    uint16 public constant MAX_DEV_BUY_CAP_BPS = 2_500; // 25%
+    uint16 public constant MAX_DEV_BUY_CAP_BPS = 2500; // 25%
 
     /// @dev Floor on an LP lock, when the creator locks rather than burns.
     uint64 public constant MIN_LP_LOCK_DURATION = 30 days;
@@ -95,9 +95,7 @@ contract BondingCurveFactory is Ownable2Step, Pausable, ReentrancyGuard {
     error ImplementationNotSet();
     error ZeroAddress();
 
-    constructor(address initialOwner, IFeeRouter feeRouter_, CurveConfig memory config_)
-        Ownable(initialOwner)
-    {
+    constructor(address initialOwner, IFeeRouter feeRouter_, CurveConfig memory config_) Ownable(initialOwner) {
         if (address(feeRouter_) == address(0)) revert ZeroAddress();
         feeRouter = feeRouter_;
         _setConfig(config_);
@@ -162,23 +160,23 @@ contract BondingCurveFactory is Ownable2Step, Pausable, ReentrancyGuard {
         // The curve address is fixed before the token exists, so the supply is minted directly to
         // its final home and no intermediate account can ever divert it.
         curveAddr = LibClone.cloneDeterministic(curveImplementation, salt);
-        tokenAddr =
-            address(new StandardToken{salt: salt}(p.name, p.symbol, c.totalSupply, curveAddr, msg.sender));
+        tokenAddr = address(new StandardToken{salt: salt}(p.name, p.symbol, c.totalSupply, curveAddr, msg.sender));
 
-        BondingCurve(payable(curveAddr)).initialize(
-            BondingCurve.Params({
-                token: tokenAddr,
-                creator: msg.sender,
-                curveSupply: c.curveSupply,
-                lpSupply: c.totalSupply - c.curveSupply,
-                virtualNativeStart: c.virtualNativeStart,
-                virtualTokenStart: c.virtualTokenStart,
-                antiSnipeWindow: c.antiSnipeWindow,
-                maxBuyDuringWindow: c.maxBuyDuringWindow,
-                lockLpInsteadOfBurn: p.lockLpInsteadOfBurn,
-                lpLockDuration: p.lpLockDuration
-            })
-        );
+        BondingCurve(payable(curveAddr))
+            .initialize(
+                BondingCurve.Params({
+                    token: tokenAddr,
+                    creator: msg.sender,
+                    curveSupply: c.curveSupply,
+                    lpSupply: c.totalSupply - c.curveSupply,
+                    virtualNativeStart: c.virtualNativeStart,
+                    virtualTokenStart: c.virtualTokenStart,
+                    antiSnipeWindow: c.antiSnipeWindow,
+                    maxBuyDuringWindow: c.maxBuyDuringWindow,
+                    lockLpInsteadOfBurn: p.lockLpInsteadOfBurn,
+                    lpLockDuration: p.lpLockDuration
+                })
+            );
     }
 
     /// @dev Performs the creator's opening buy and forwards the tokens straight to them, so the
@@ -188,8 +186,7 @@ contract BondingCurveFactory is Ownable2Step, Pausable, ReentrancyGuard {
         returns (uint256 devTokens)
     {
         if (p.devBuyValue == 0) return 0;
-        devTokens =
-            BondingCurve(payable(curveAddr)).buy{value: p.devBuyValue}(p.devBuyMinTokensOut, block.timestamp);
+        devTokens = BondingCurve(payable(curveAddr)).buy{value: p.devBuyValue}(p.devBuyMinTokensOut, block.timestamp);
         IERC20(tokenAddr).safeTransfer(msg.sender, devTokens);
     }
 
@@ -262,8 +259,7 @@ contract BondingCurveFactory is Ownable2Step, Pausable, ReentrancyGuard {
 
     function _enforceDevBuyCap(CurveConfig memory c, uint256 devBuyValue) private pure {
         if (devBuyValue == 0) return;
-        uint256 target =
-            CurveMath.nativeRaisedAfterSelling(c.virtualNativeStart, c.virtualTokenStart, c.curveSupply);
+        uint256 target = CurveMath.nativeRaisedAfterSelling(c.virtualNativeStart, c.virtualTokenStart, c.curveSupply);
         uint256 cap = (target * c.devBuyCapBps) / 10_000;
         if (devBuyValue > cap) revert DevBuyExceedsCap(devBuyValue, cap);
     }

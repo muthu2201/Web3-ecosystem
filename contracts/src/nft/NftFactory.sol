@@ -108,9 +108,7 @@ contract NftFactory is Ownable2Step, Pausable, ReentrancyGuard {
         returns (address)
     {
         bytes32 salt = effectiveSalt(deployer, userSalt);
-        return address(
-            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash))))
-        );
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
     }
 
     function deploymentOf(address collection) external view returns (Deployment memory) {

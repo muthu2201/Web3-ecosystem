@@ -111,8 +111,7 @@ contract BondingCurveTest is Fixture {
     ///      it does not hold.
     function testFuzz_BalanceAlwaysEqualsTrackedReserve(uint96 a, uint96 b, uint96 c) public {
         vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
-        uint256[3] memory amounts =
-            [bound(a, 1e12, 1 ether), bound(b, 1e12, 1 ether), bound(c, 1e12, 1 ether)];
+        uint256[3] memory amounts = [bound(a, 1e12, 1 ether), bound(b, 1e12, 1 ether), bound(c, 1e12, 1 ether)];
         address[3] memory buyers = [alice, bob, carol];
 
         for (uint256 i; i < 3; ++i) {
@@ -187,9 +186,7 @@ contract BondingCurveTest is Fixture {
         vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
         (uint256 quoted,) = curve.quoteBuy(1 ether);
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(BondingCurve.SlippageExceeded.selector, quoted, quoted + 1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(BondingCurve.SlippageExceeded.selector, quoted, quoted + 1));
         curve.buy{value: 1 ether}(quoted + 1, block.timestamp + 1);
     }
 
@@ -224,9 +221,7 @@ contract BondingCurveTest is Fixture {
         vm.prank(alice);
         vm.expectRevert(
             abi.encodeWithSelector(
-                BondingCurve.AntiSnipeCapExceeded.selector,
-                MAX_BUY_IN_WINDOW + 1 wei,
-                MAX_BUY_IN_WINDOW
+                BondingCurve.AntiSnipeCapExceeded.selector, MAX_BUY_IN_WINDOW + 1 wei, MAX_BUY_IN_WINDOW
             )
         );
         curve.buy{value: MAX_BUY_IN_WINDOW + 1 wei}(0, block.timestamp + 1);
@@ -264,9 +259,7 @@ contract BondingCurveTest is Fixture {
         uint256 deployFee = feeRouter.flatNativeOf(IFeeRouter.Product.TokenDeploy);
 
         vm.prank(creator);
-        vm.expectRevert(
-            abi.encodeWithSelector(BondingCurveFactory.DevBuyExceedsCap.selector, cap + 1, cap)
-        );
+        vm.expectRevert(abi.encodeWithSelector(BondingCurveFactory.DevBuyExceedsCap.selector, cap + 1, cap));
         curveFactory.launch{value: deployFee + cap + 1}(
             BondingCurveFactory.LaunchParams({
                 name: "TooBig",
@@ -308,9 +301,7 @@ contract BondingCurveTest is Fixture {
 
         vm.startPrank(alice);
         IERC20(token).approve(address(curve), got);
-        vm.expectRevert(
-            abi.encodeWithSelector(BondingCurve.SlippageExceeded.selector, expectedOut, expectedOut + 1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(BondingCurve.SlippageExceeded.selector, expectedOut, expectedOut + 1));
         curve.sell(got, expectedOut + 1, block.timestamp + 1);
         vm.stopPrank();
     }
@@ -320,9 +311,7 @@ contract BondingCurveTest is Fixture {
         _buy(alice, 1 ether);
         uint256 sold = curve.tokensSold();
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(BondingCurve.InsufficientTokenBalance.selector, sold, sold + 1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(BondingCurve.InsufficientTokenBalance.selector, sold, sold + 1));
         curve.sell(sold + 1, 0, block.timestamp + 1);
     }
 
@@ -357,9 +346,7 @@ contract BondingCurveTest is Fixture {
 
         // All LP is burned: the dead address holds everything except the pair's own minimum.
         assertEq(pair.balanceOf(curve.BURN_ADDRESS()), pair.totalSupply(), "LP fully burned");
-        assertGt(
-            feeRouter.balanceOf(treasury, address(0)), treasuryBefore, "graduation fee collected"
-        );
+        assertGt(feeRouter.balanceOf(treasury, address(0)), treasuryBefore, "graduation fee collected");
     }
 
     function test_TradingIsClosedAfterGraduation() public {
@@ -437,9 +424,7 @@ contract BondingCurveTest is Fixture {
         uint256 deployFee = feeRouter.flatNativeOf(IFeeRouter.Product.TokenDeploy);
         vm.prank(creator);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                BondingCurveFactory.LockDurationTooShort.selector, uint64(1 days), uint64(30 days)
-            )
+            abi.encodeWithSelector(BondingCurveFactory.LockDurationTooShort.selector, uint64(1 days), uint64(30 days))
         );
         curveFactory.launch{value: deployFee}(
             BondingCurveFactory.LaunchParams({
@@ -461,15 +446,14 @@ contract BondingCurveTest is Fixture {
     /// @dev Even with the owner pushing the curve fee to its ceiling, a trader can never be
     ///      charged more than 1.5%.
     function test_CurveFeeCannotExceedOnePointFivePercentEndToEnd() public {
-        _setFee(IFeeRouter.Product.BondingCurveTrade, 150, 5_000, 0);
+        _setFee(IFeeRouter.Product.BondingCurveTrade, 150, 5000, 0);
         vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
 
         uint256 spend = 2 ether;
-        uint256 feesBefore =
-            feeRouter.balanceOf(creator, address(0)) + feeRouter.balanceOf(treasury, address(0));
+        uint256 feesBefore = feeRouter.balanceOf(creator, address(0)) + feeRouter.balanceOf(treasury, address(0));
         _buy(alice, spend);
-        uint256 charged = feeRouter.balanceOf(creator, address(0))
-            + feeRouter.balanceOf(treasury, address(0)) - feesBefore;
+        uint256 charged =
+            feeRouter.balanceOf(creator, address(0)) + feeRouter.balanceOf(treasury, address(0)) - feesBefore;
 
         assertEq(charged, (spend * 150) / 10_000);
         assertLe(charged * 10_000 / spend, 150, "hard ceiling holds through the full path");

@@ -31,7 +31,7 @@ contract MockWETH is ERC20 {
 ///      against the same mint maths that runs on Base and BNB Chain. A behavioural mock would
 ///      have hidden exactly the rounding and first-mint edge cases graduation depends on.
 contract MockUniswapV2Pair is ERC20 {
-    uint256 public constant MINIMUM_LIQUIDITY = 1_000;
+    uint256 public constant MINIMUM_LIQUIDITY = 1000;
 
     address public factory;
     address public token0;
@@ -116,9 +116,7 @@ contract MockUniswapV2Pair is ERC20 {
         _burn(address(this), liquidity);
         IERC20(token0).transfer(to, amount0);
         IERC20(token1).transfer(to, amount1);
-        _update(
-            IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this))
-        );
+        _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)));
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
@@ -139,8 +137,8 @@ contract MockUniswapV2Pair is ERC20 {
             require(amount0In > 0 || amount1In > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
 
             // 0.30% fee, enforced through the K check exactly as upstream does it.
-            uint256 adjusted0 = balance0 * 1_000 - amount0In * 3;
-            uint256 adjusted1 = balance1 * 1_000 - amount1In * 3;
+            uint256 adjusted0 = balance0 * 1000 - amount0In * 3;
+            uint256 adjusted1 = balance1 * 1000 - amount1In * 3;
             require(adjusted0 * adjusted1 >= uint256(r0) * uint256(r1) * 1_000_000, "UniswapV2: K");
 
             emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
@@ -197,13 +195,9 @@ contract MockUniswapV2Router02 {
         return wethAddress;
     }
 
-    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)
-        public
-        pure
-        returns (uint256)
-    {
+    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) public pure returns (uint256) {
         uint256 amountInWithFee = amountIn * 997;
-        return (amountInWithFee * reserveOut) / (reserveIn * 1_000 + amountInWithFee);
+        return (amountInWithFee * reserveOut) / (reserveIn * 1000 + amountInWithFee);
     }
 
     function getAmountsOut(uint256 amountIn, address[] calldata path)
@@ -222,14 +216,11 @@ contract MockUniswapV2Router02 {
         }
     }
 
-    function addLiquidityETH(
-        address tokenAddr,
-        uint256 amountTokenDesired,
-        uint256,
-        uint256,
-        address to,
-        uint256
-    ) external payable returns (uint256, uint256, uint256 liquidity) {
+    function addLiquidityETH(address tokenAddr, uint256 amountTokenDesired, uint256, uint256, address to, uint256)
+        external
+        payable
+        returns (uint256, uint256, uint256 liquidity)
+    {
         address pair = MockUniswapV2Factory(factoryAddress).getPair(tokenAddr, wethAddress);
         if (pair == address(0)) {
             pair = MockUniswapV2Factory(factoryAddress).createPair(tokenAddr, wethAddress);
@@ -254,8 +245,7 @@ contract MockUniswapV2Router02 {
         IERC20(wethAddress).transfer(pair, msg.value);
 
         (uint112 r0, uint112 r1,) = IUniswapV2Pair(pair).getReserves();
-        (uint256 rIn, uint256 rOut) =
-            path[0] < path[1] ? (uint256(r0), uint256(r1)) : (uint256(r1), uint256(r0));
+        (uint256 rIn, uint256 rOut) = path[0] < path[1] ? (uint256(r0), uint256(r1)) : (uint256(r1), uint256(r0));
         uint256 out = getAmountOut(msg.value, rIn, rOut);
         require(out >= amountOutMin, "INSUFFICIENT_OUTPUT_AMOUNT");
 
@@ -275,8 +265,7 @@ contract MockUniswapV2Router02 {
         IERC20(path[0]).transferFrom(msg.sender, pair, amountIn);
 
         (uint112 r0, uint112 r1,) = IUniswapV2Pair(pair).getReserves();
-        (uint256 rIn, uint256 rOut) =
-            path[0] < path[1] ? (uint256(r0), uint256(r1)) : (uint256(r1), uint256(r0));
+        (uint256 rIn, uint256 rOut) = path[0] < path[1] ? (uint256(r0), uint256(r1)) : (uint256(r1), uint256(r0));
         // Re-derive the actual input in case the token taxes the transfer.
         uint256 actualIn = IERC20(path[0]).balanceOf(pair) - rIn;
         uint256 out = getAmountOut(actualIn, rIn, rOut);

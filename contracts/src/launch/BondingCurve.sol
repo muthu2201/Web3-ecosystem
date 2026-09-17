@@ -7,8 +7,8 @@ import {CurveMath} from "../libraries/CurveMath.sol";
 import {LiquidityLocker} from "../liquidity/LiquidityLocker.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title BondingCurve
 /// @notice Permissionless price-discovery curve that graduates into a real DEX pool.
@@ -142,12 +142,7 @@ contract BondingCurve is ReentrancyGuardTransient {
     error UnexpectedNativeSender(address sender);
     error NoLiquidityMinted();
 
-    constructor(
-        address factory_,
-        IFeeRouter feeRouter_,
-        IUniswapV2Router02 dexRouter_,
-        LiquidityLocker locker_
-    ) {
+    constructor(address factory_, IFeeRouter feeRouter_, IUniswapV2Router02 dexRouter_, LiquidityLocker locker_) {
         factory = factory_;
         feeRouter = feeRouter_;
         dexRouter = dexRouter_;
@@ -218,12 +213,7 @@ contract BondingCurve is ReentrancyGuardTransient {
     /// @dev If the requested amount would overrun the remaining curve supply, the buy is filled
     ///      partially at the exact cost of the remaining tokens and the unused native is refunded,
     ///      with the fee charged only on the portion actually used.
-    function buy(uint256 minTokensOut, uint256 deadline)
-        external
-        payable
-        nonReentrant
-        returns (uint256 tokensOut)
-    {
+    function buy(uint256 minTokensOut, uint256 deadline) external payable nonReentrant returns (uint256 tokensOut) {
         _requireActive(deadline);
         if (msg.value == 0) revert ZeroAmount();
 
@@ -242,9 +232,7 @@ contract BondingCurve is ReentrancyGuardTransient {
             // Partial fill: price the remaining supply exactly, then gross the fee back up so the
             // buyer is charged the same rate on a smaller base rather than on their full input.
             tokensOut = remaining;
-            netIn = CurveMath.nativeInForExactTokensOut(
-                virtualNativeReserve, virtualTokenReserve, tokensOut
-            );
+            netIn = CurveMath.nativeInForExactTokensOut(virtualNativeReserve, virtualTokenReserve, tokensOut);
             grossUsed = feeBps == 0 ? netIn : Math.ceilDiv(netIn * 10_000, 10_000 - feeBps);
             if (grossUsed > msg.value) {
                 // Rounding pushed the grossed-up cost past what was sent; fall back to spending
@@ -252,8 +240,7 @@ contract BondingCurve is ReentrancyGuardTransient {
                 grossUsed = msg.value;
                 fee = (grossUsed * feeBps) / 10_000;
                 netIn = grossUsed - fee;
-                tokensOut =
-                    CurveMath.tokensOutForNativeIn(virtualNativeReserve, virtualTokenReserve, netIn);
+                tokensOut = CurveMath.tokensOutForNativeIn(virtualNativeReserve, virtualTokenReserve, netIn);
             } else {
                 fee = grossUsed - netIn;
             }
@@ -278,9 +265,7 @@ contract BondingCurve is ReentrancyGuardTransient {
         token.safeTransfer(msg.sender, tokensOut);
         if (refund != 0) _sendNative(msg.sender, refund);
 
-        emit Bought(
-            msg.sender, grossUsed, tokensOut, fee, refund, virtualNativeReserve, virtualTokenReserve
-        );
+        emit Bought(msg.sender, grossUsed, tokensOut, fee, refund, virtualNativeReserve, virtualTokenReserve);
 
         if (tokensSold == curveSupply) _graduate();
     }
@@ -296,8 +281,7 @@ contract BondingCurve is ReentrancyGuardTransient {
         if (tokensIn == 0) revert ZeroAmount();
         if (tokensIn > tokensSold) revert InsufficientTokenBalance(tokensSold, tokensIn);
 
-        uint256 grossOut =
-            CurveMath.nativeOutForTokensIn(virtualNativeReserve, virtualTokenReserve, tokensIn);
+        uint256 grossOut = CurveMath.nativeOutForTokensIn(virtualNativeReserve, virtualTokenReserve, tokensIn);
         if (grossOut == 0) revert ZeroAmount();
         // Cannot pay out more than was ever collected.
         if (grossOut > realNativeReserve) revert InsufficientTokenBalance(realNativeReserve, grossOut);
@@ -360,14 +344,10 @@ contract BondingCurve is ReentrancyGuardTransient {
         uint256 lockId;
         if (lockLpInsteadOfBurn) {
             IUniswapV2Pair(pair).approve(address(locker), liquidity);
-            lockId = locker.lock(
-                pair, liquidity, uint64(block.timestamp) + lpLockDuration, creator
-            );
+            lockId = locker.lock(pair, liquidity, uint64(block.timestamp) + lpLockDuration, creator);
         }
 
-        emit Graduated(
-            pair, tokensForPool, nativeForPool, liquidity, gradFee, lockLpInsteadOfBurn, lockId
-        );
+        emit Graduated(pair, tokensForPool, nativeForPool, liquidity, gradFee, lockLpInsteadOfBurn, lockId);
     }
 
     // ---------------------------------------------------------------------
@@ -377,8 +357,7 @@ contract BondingCurve is ReentrancyGuardTransient {
     /// @notice Tokens a buy of `nativeIn` would deliver right now, after fees.
     function quoteBuy(uint256 nativeIn) external view returns (uint256 tokensOut, uint256 fee) {
         fee = (nativeIn * feeRouter.bpsOf(IFeeRouter.Product.BondingCurveTrade)) / 10_000;
-        tokensOut =
-            CurveMath.tokensOutForNativeIn(virtualNativeReserve, virtualTokenReserve, nativeIn - fee);
+        tokensOut = CurveMath.tokensOutForNativeIn(virtualNativeReserve, virtualTokenReserve, nativeIn - fee);
         uint256 remaining = curveSupply - tokensSold;
         if (tokensOut > remaining) tokensOut = remaining;
     }
@@ -402,9 +381,8 @@ contract BondingCurve is ReentrancyGuardTransient {
 
     /// @notice Native the curve will hold at graduation, known before the first trade.
     function graduationTarget() external view returns (uint256) {
-        return CurveMath.nativeRaisedAfterSelling(
-            virtualNativeReserve, virtualTokenReserve, curveSupply - tokensSold
-        ) + realNativeReserve;
+        return CurveMath.nativeRaisedAfterSelling(virtualNativeReserve, virtualTokenReserve, curveSupply - tokensSold)
+            + realNativeReserve;
     }
 
     /// @notice True if someone has already put liquidity into the pair ahead of graduation.

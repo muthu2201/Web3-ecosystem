@@ -91,10 +91,7 @@ contract ComplianceToken is ERC20, ERC20Burnable, ERC20Pausable, ERC20Permit, Ac
         emit AllowlistUpdated(account, allowed);
     }
 
-    function setAllowlistedBatch(address[] calldata accounts, bool allowed)
-        external
-        onlyRole(COMPLIANCE_ROLE)
-    {
+    function setAllowlistedBatch(address[] calldata accounts, bool allowed) external onlyRole(COMPLIANCE_ROLE) {
         for (uint256 i; i < accounts.length; ++i) {
             if (accounts[i] == address(0)) revert ZeroAddress();
             isAllowlisted[accounts[i]] = allowed;

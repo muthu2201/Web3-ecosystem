@@ -6,8 +6,8 @@ import {IUniswapV2Factory, IUniswapV2Pair, IUniswapV2Router02, IWETH} from "../i
 import {LiquidityLocker} from "../liquidity/LiquidityLocker.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title Presale
 /// @notice Soft-cap / hard-cap token sale with automatic refunds and automatic pool seeding.
@@ -36,7 +36,7 @@ contract Presale is ReentrancyGuardTransient {
 
     /// @dev At least half the raise must go into the pool. A presale that routes most of the money
     ///      to the team and leaves a thin pool is the shape almost every exit scam takes.
-    uint16 public constant MIN_LIQUIDITY_BPS = 5_000;
+    uint16 public constant MIN_LIQUIDITY_BPS = 5000;
 
     /// @dev Floor on the LP lock when the sale locks rather than burns.
     uint64 public constant MIN_LP_LOCK_DURATION = 30 days;
@@ -51,7 +51,6 @@ contract Presale is ReentrancyGuardTransient {
         AwaitingFinalisation, // closed at or above soft cap, waiting for finalise()
         Succeeded, // finalised: pool seeded, tokens claimable
         Failed // closed below soft cap or cancelled: refunds open
-
     }
 
     address public immutable factory;
@@ -143,12 +142,7 @@ contract Presale is ReentrancyGuardTransient {
     error UnexpectedNativeSender(address sender);
     error NoLiquidityMinted();
 
-    constructor(
-        address factory_,
-        IFeeRouter feeRouter_,
-        IUniswapV2Router02 dexRouter_,
-        LiquidityLocker locker_
-    ) {
+    constructor(address factory_, IFeeRouter feeRouter_, IUniswapV2Router02 dexRouter_, LiquidityLocker locker_) {
         factory = factory_;
         feeRouter = feeRouter_;
         dexRouter = dexRouter_;
@@ -273,8 +267,7 @@ contract Presale is ReentrancyGuardTransient {
         finalised = true;
 
         uint256 raised = totalRaised;
-        IFeeRouter.Product product =
-            isFairLaunch ? IFeeRouter.Product.FairLaunch : IFeeRouter.Product.Presale;
+        IFeeRouter.Product product = isFairLaunch ? IFeeRouter.Product.FairLaunch : IFeeRouter.Product.Presale;
         uint256 platformFee = feeRouter.feeOn(product, raised);
         uint256 toLiquidity = (raised * liquidityBps) / 10_000;
         // The fee is taken from the owner's share, never from the liquidity allocation, so the
@@ -297,10 +290,7 @@ contract Presale is ReentrancyGuardTransient {
         emit Finalised(raised, platformFee, toLiquidity, toOwner, pair, liquidity, lockId);
     }
 
-    function _seedPool(uint256 nativeForPool)
-        private
-        returns (address pair, uint256 liquidity, uint256 lockId)
-    {
+    function _seedPool(uint256 nativeForPool) private returns (address pair, uint256 liquidity, uint256 lockId) {
         uint256 tokensForPool = (nativeForPool * liquidityTokensPerNative) / 1e18;
 
         pair = dexFactory.getPair(address(token), address(weth));
@@ -403,11 +393,7 @@ contract Presale is ReentrancyGuardTransient {
         return _contributors.length;
     }
 
-    function contributorsPaged(uint256 offset, uint256 limit)
-        external
-        view
-        returns (address[] memory page)
-    {
+    function contributorsPaged(uint256 offset, uint256 limit) external view returns (address[] memory page) {
         uint256 len = _contributors.length;
         if (offset >= len) return new address[](0);
         uint256 end = offset + limit;

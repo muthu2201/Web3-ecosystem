@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {MerkleDistributor} from "../src/distribution/MerkleDistributor.sol";
+import {TokenVesting} from "../src/distribution/TokenVesting.sol";
 import {FeeRouter} from "../src/fees/FeeRouter.sol";
 import {IFeeRouter} from "../src/fees/IFeeRouter.sol";
 import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2.sol";
-import {MerkleDistributor} from "../src/distribution/MerkleDistributor.sol";
-import {TokenVesting} from "../src/distribution/TokenVesting.sol";
 import {BondingCurve} from "../src/launch/BondingCurve.sol";
 import {BondingCurveFactory} from "../src/launch/BondingCurveFactory.sol";
 import {Presale} from "../src/launch/Presale.sol";
 import {PresaleFactory} from "../src/launch/PresaleFactory.sol";
-import {NftCollection} from "../src/nft/NftCollection.sol";
+import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {NftFactory} from "../src/nft/NftFactory.sol";
 import {NftMarketplace} from "../src/nft/NftMarketplace.sol";
-import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {MockUniswapV2Factory, MockUniswapV2Router02, MockWETH} from "./mocks/UniswapV2.sol";
 import {Test} from "forge-std/Test.sol";
@@ -56,7 +55,7 @@ abstract contract Fixture is Test {
     uint256 internal constant V_NATIVE_START = 1.5 ether;
     uint64 internal constant ANTI_SNIPE_WINDOW = 60;
     uint256 internal constant MAX_BUY_IN_WINDOW = 0.5 ether;
-    uint16 internal constant DEV_BUY_CAP_BPS = 2_000;
+    uint16 internal constant DEV_BUY_CAP_BPS = 2000;
 
     function _deployEcosystem() internal {
         weth = new MockWETH();
@@ -71,16 +70,12 @@ abstract contract Fixture is Test {
         // takes its implementation through a one-time setter, which is exactly how the deploy
         // script sequences it on a real chain.
         curveFactory = new BondingCurveFactory(owner, feeRouter, _defaultCurveConfig());
-        curveImpl = new BondingCurve(
-            address(curveFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker
-        );
+        curveImpl = new BondingCurve(address(curveFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker);
         vm.prank(owner);
         curveFactory.setCurveImplementation(address(curveImpl));
 
         presaleFactory = new PresaleFactory(owner, feeRouter);
-        presaleImpl = new Presale(
-            address(presaleFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker
-        );
+        presaleImpl = new Presale(address(presaleFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker);
         vm.prank(owner);
         presaleFactory.setPresaleImplementation(address(presaleImpl));
 
@@ -91,10 +86,10 @@ abstract contract Fixture is Test {
 
         _configureFees();
 
-        vm.deal(creator, 1_000 ether);
-        vm.deal(alice, 1_000 ether);
-        vm.deal(bob, 1_000 ether);
-        vm.deal(carol, 1_000 ether);
+        vm.deal(creator, 1000 ether);
+        vm.deal(alice, 1000 ether);
+        vm.deal(bob, 1000 ether);
+        vm.deal(carol, 1000 ether);
     }
 
     function _defaultCurveConfig() internal pure returns (BondingCurveFactory.CurveConfig memory) {
@@ -111,7 +106,7 @@ abstract contract Fixture is Test {
 
     function _configureFees() internal {
         _setFee(IFeeRouter.Product.TokenDeploy, 0, 0, 0.002 ether);
-        _setFee(IFeeRouter.Product.BondingCurveTrade, 100, 5_000, 0); // 1% total, half to creator
+        _setFee(IFeeRouter.Product.BondingCurveTrade, 100, 5000, 0); // 1% total, half to creator
         _setFee(IFeeRouter.Product.Graduation, 0, 0, 0.003 ether);
         _setFee(IFeeRouter.Product.Swap, 25, 0, 0);
         _setFee(IFeeRouter.Product.Presale, 200, 0, 0);

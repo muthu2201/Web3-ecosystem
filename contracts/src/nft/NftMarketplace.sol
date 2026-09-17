@@ -2,13 +2,13 @@
 pragma solidity 0.8.30;
 
 import {IFeeRouter} from "../fees/IFeeRouter.sol";
+import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title NftMarketplace
 /// @notice Off-chain order book, on-chain settlement. Orders are EIP-712 signatures, stored
@@ -31,7 +31,7 @@ contract NftMarketplace is EIP712, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @dev Ceiling applied to whatever ERC-2981 reports.
-    uint256 public constant MAX_ROYALTY_BPS = 1_000; // 10%
+    uint256 public constant MAX_ROYALTY_BPS = 1000; // 10%
 
     /// @notice A signed intent to trade one specific NFT.
     /// @param maker Signer. Seller for a listing, buyer for a bid.
@@ -124,9 +124,7 @@ contract NftMarketplace is EIP712, ReentrancyGuard {
 
         if (order.currency == address(0)) {
             if (platformFee != 0) {
-                feeRouter.routeNative{value: platformFee}(
-                    IFeeRouter.Product.NftMarketplace, address(0)
-                );
+                feeRouter.routeNative{value: platformFee}(IFeeRouter.Product.NftMarketplace, address(0));
             }
             if (royalty != 0) _sendNative(royaltyReceiver, royalty);
             if (toSeller != 0) _sendNative(order.maker, toSeller);
@@ -135,9 +133,7 @@ contract NftMarketplace is EIP712, ReentrancyGuard {
             if (platformFee != 0) {
                 currency.safeTransferFrom(msg.sender, address(this), platformFee);
                 currency.forceApprove(address(feeRouter), platformFee);
-                feeRouter.routeERC20(
-                    IFeeRouter.Product.NftMarketplace, order.currency, address(0), platformFee
-                );
+                feeRouter.routeERC20(IFeeRouter.Product.NftMarketplace, order.currency, address(0), platformFee);
             }
             if (royalty != 0) currency.safeTransferFrom(msg.sender, royaltyReceiver, royalty);
             if (toSeller != 0) currency.safeTransferFrom(msg.sender, order.maker, toSeller);
@@ -177,9 +173,7 @@ contract NftMarketplace is EIP712, ReentrancyGuard {
         if (platformFee != 0) {
             currency.safeTransferFrom(order.maker, address(this), platformFee);
             currency.forceApprove(address(feeRouter), platformFee);
-            feeRouter.routeERC20(
-                IFeeRouter.Product.NftMarketplace, order.currency, address(0), platformFee
-            );
+            feeRouter.routeERC20(IFeeRouter.Product.NftMarketplace, order.currency, address(0), platformFee);
         }
         if (royalty != 0) currency.safeTransferFrom(order.maker, royaltyReceiver, royalty);
         if (toSeller != 0) currency.safeTransferFrom(order.maker, msg.sender, toSeller);

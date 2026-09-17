@@ -38,11 +38,7 @@ contract LiquidityLocker is ReentrancyGuard {
     mapping(address token => uint256 amount) public totalLocked;
 
     event LockCreated(
-        uint256 indexed lockId,
-        address indexed token,
-        address indexed owner,
-        uint256 amount,
-        uint64 unlockTime
+        uint256 indexed lockId, address indexed token, address indexed owner, uint256 amount, uint64 unlockTime
     );
     event LockExtended(uint256 indexed lockId, uint64 oldUnlockTime, uint64 newUnlockTime);
     event LockToppedUp(uint256 indexed lockId, uint256 addedAmount, uint256 newAmount);
@@ -79,11 +75,7 @@ contract LiquidityLocker is ReentrancyGuard {
 
         lockId = _nextLockId++;
         _locks[lockId] = Lock({
-            token: token,
-            owner: owner,
-            amount: received,
-            unlockTime: unlockTime,
-            createdAt: uint64(block.timestamp)
+            token: token, owner: owner, amount: received, unlockTime: unlockTime, createdAt: uint64(block.timestamp)
         });
         _locksByToken[token].push(lockId);
         _locksByOwner[owner].push(lockId);

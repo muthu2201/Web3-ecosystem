@@ -11,7 +11,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract PresaleTest is Fixture {
     MockERC20 internal saleToken;
 
-    uint256 internal constant RATE = 1_000e18; // 1000 tokens per native
+    uint256 internal constant RATE = 1000e18; // 1000 tokens per native
     uint256 internal constant LP_RATE = 800e18; // pool priced above the sale price
     uint256 internal constant SOFT_CAP = 10 ether;
     uint256 internal constant HARD_CAP = 20 ether;
@@ -33,7 +33,7 @@ contract PresaleTest is Fixture {
             maxContribution: 5 ether,
             startsAt: uint64(block.timestamp + 1 hours),
             endsAt: uint64(block.timestamp + 8 hours),
-            liquidityBps: 6_000,
+            liquidityBps: 6000,
             lockLpInsteadOfBurn: false,
             lpLockDuration: 0,
             whitelistRoot: bytes32(0),
@@ -69,7 +69,7 @@ contract PresaleTest is Fixture {
         // Deliberately mirrors `Presale._tokensNeeded` step for step, including its intermediate
         // truncation. Reordering for precision here would stop this matching the contract.
         // forge-lint: disable-next-line(divide-before-multiply)
-        uint256 forPool = ((HARD_CAP * 6_000 / 10_000) * LP_RATE) / 1e18;
+        uint256 forPool = ((HARD_CAP * 6000 / 10_000) * LP_RATE) / 1e18;
         assertEq(saleToken.balanceOf(address(sale)), owedAtHardCap + forPool);
     }
 
@@ -98,23 +98,19 @@ contract PresaleTest is Fixture {
         saleToken.mint(creator, needed);
         vm.startPrank(creator);
         saleToken.approve(address(presaleFactory), needed);
-        vm.expectRevert(
-            abi.encodeWithSelector(Presale.InvalidParams.selector, "pool rate above sale rate")
-        );
+        vm.expectRevert(abi.encodeWithSelector(Presale.InvalidParams.selector, "pool rate above sale rate"));
         presaleFactory.createPresale(p, keccak256("badrate"));
         vm.stopPrank();
     }
 
     function test_LiquidityShareBelowFloorIsRejected() public {
         Presale.Params memory p = _params();
-        p.liquidityBps = 4_999;
+        p.liquidityBps = 4999;
         uint256 needed = 1_000_000e18;
         saleToken.mint(creator, needed);
         vm.startPrank(creator);
         saleToken.approve(address(presaleFactory), needed);
-        vm.expectRevert(
-            abi.encodeWithSelector(Presale.InvalidParams.selector, "liquidity share out of range")
-        );
+        vm.expectRevert(abi.encodeWithSelector(Presale.InvalidParams.selector, "liquidity share out of range"));
         presaleFactory.createPresale(p, keccak256("badliq"));
         vm.stopPrank();
     }
@@ -166,9 +162,7 @@ contract PresaleTest is Fixture {
         _contribute(sale, alice, HARD_CAP - 0.5 ether);
 
         vm.prank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(Presale.HardCapExceeded.selector, 1 ether, 0.5 ether)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Presale.HardCapExceeded.selector, 1 ether, 0.5 ether));
         sale.contribute{value: 1 ether}(new bytes32[](0));
 
         // Filling the cap exactly closes the sale to further contributions.
@@ -199,11 +193,8 @@ contract PresaleTest is Fixture {
         Presale sale = _create(p);
         vm.warp(p.startsAt);
 
-        uint256[3] memory amounts = [
-            bound(a, 0.1 ether, 3 ether),
-            bound(b, 0.1 ether, 3 ether),
-            bound(c, 0.1 ether, 3 ether)
-        ];
+        uint256[3] memory amounts =
+            [bound(a, 0.1 ether, 3 ether), bound(b, 0.1 ether, 3 ether), bound(c, 0.1 ether, 3 ether)];
         address[3] memory who = [alice, bob, carol];
 
         uint256 total;
@@ -319,7 +310,7 @@ contract PresaleTest is Fixture {
 
         uint256 raised = 12 ether;
         uint256 expectedFee = (raised * 200) / 10_000; // 2% presale fee
-        uint256 toLiquidity = (raised * 6_000) / 10_000;
+        uint256 toLiquidity = (raised * 6000) / 10_000;
 
         assertEq(creator.balance - ownerBefore, raised - toLiquidity - expectedFee);
         assertEq(feeRouter.balanceOf(treasury, address(0)) - treasuryBefore, expectedFee);
@@ -344,7 +335,7 @@ contract PresaleTest is Fixture {
 
         IUniswapV2Pair pair = IUniswapV2Pair(dexFactory.getPair(address(saleToken), address(weth)));
         uint256 wethInPool = IERC20(address(weth)).balanceOf(address(pair));
-        assertEq(wethInPool, (15 ether * 6_000) / 10_000, "pool got the full promised share");
+        assertEq(wethInPool, (15 ether * 6000) / 10_000, "pool got the full promised share");
     }
 
     function test_ContributorsClaimExactlyTheirAllocation() public {

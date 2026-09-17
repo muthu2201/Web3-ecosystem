@@ -31,7 +31,7 @@ contract PresaleInvariantTest is Fixture {
         Presale.Params memory p = Presale.Params({
             token: address(saleToken),
             owner: creator,
-            tokensPerNative: 1_000e18,
+            tokensPerNative: 1000e18,
             liquidityTokensPerNative: 800e18,
             softCap: 55 ether, // above the 50 ether five actors can reach at 10 ether each
             hardCap: 60 ether,
@@ -39,7 +39,7 @@ contract PresaleInvariantTest is Fixture {
             maxContribution: 10 ether,
             startsAt: uint64(vm.getBlockTimestamp() + 1 hours),
             endsAt: uint64(vm.getBlockTimestamp() + 1 hours + 24 hours),
-            liquidityBps: 6_000,
+            liquidityBps: 6000,
             lockLpInsteadOfBurn: false,
             lpLockDuration: 0,
             whitelistRoot: bytes32(0),
@@ -97,11 +97,7 @@ contract PresaleInvariantTest is Fixture {
         uint256 n = handler.actorCount();
         for (uint256 i; i < n; ++i) {
             address actor = handler.actors(i);
-            assertLe(
-                handler.ghostRefunded(actor),
-                handler.ghostContributed(actor),
-                "refund exceeded contribution"
-            );
+            assertLe(handler.ghostRefunded(actor), handler.ghostContributed(actor), "refund exceeded contribution");
         }
     }
 

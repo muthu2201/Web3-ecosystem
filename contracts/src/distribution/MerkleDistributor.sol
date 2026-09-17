@@ -3,8 +3,8 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title MerkleDistributor
 /// @notice Pull-based airdrop and holder-reward distribution.
@@ -53,9 +53,7 @@ contract MerkleDistributor is ReentrancyGuard {
         uint64 startsAt,
         uint64 expiresAt
     );
-    event Claimed(
-        uint256 indexed distributionId, uint256 indexed index, address indexed account, uint256 amount
-    );
+    event Claimed(uint256 indexed distributionId, uint256 indexed index, address indexed account, uint256 amount);
     event Swept(uint256 indexed distributionId, address indexed to, uint256 amount);
 
     error ZeroAddress();
@@ -84,9 +82,7 @@ contract MerkleDistributor is ReentrancyGuard {
         if (totalAmount == 0) revert ZeroAmount();
         uint64 effectiveStart = startsAt == 0 ? uint64(block.timestamp) : startsAt;
         if (expiresAt < effectiveStart + MIN_CLAIM_WINDOW) {
-            revert ClaimWindowTooShort(
-                expiresAt > effectiveStart ? expiresAt - effectiveStart : 0, MIN_CLAIM_WINDOW
-            );
+            revert ClaimWindowTooShort(expiresAt > effectiveStart ? expiresAt - effectiveStart : 0, MIN_CLAIM_WINDOW);
         }
 
         uint256 before = IERC20(token).balanceOf(address(this));
@@ -106,9 +102,7 @@ contract MerkleDistributor is ReentrancyGuard {
             swept: false
         });
 
-        emit DistributionCreated(
-            distributionId, token, msg.sender, merkleRoot, received, effectiveStart, expiresAt
-        );
+        emit DistributionCreated(distributionId, token, msg.sender, merkleRoot, received, effectiveStart, expiresAt);
     }
 
     /// @notice Claim an allocation. Anyone may submit a valid proof; funds always go to `account`.

@@ -2,10 +2,10 @@
 pragma solidity 0.8.30;
 
 import {IPlatformToken, RiskFlags} from "./IPlatformToken.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title TaxToken
 /// @notice Fixed-supply ERC-20 with a fee on DEX buys and sells, for projects funding treasury
@@ -28,7 +28,7 @@ contract TaxToken is ERC20, ERC20Burnable, ERC20Permit, Ownable, IPlatformToken 
     uint16 internal constant BPS_DENOMINATOR = 10_000;
 
     /// @notice Compile-time ceiling no deployment can exceed.
-    uint16 public constant ABSOLUTE_MAX_TAX_BPS = 1_000; // 10%
+    uint16 public constant ABSOLUTE_MAX_TAX_BPS = 1000; // 10%
 
     /// @notice Per-deployment ceiling, fixed at construction and bounded by ABSOLUTE_MAX_TAX_BPS.
     uint16 public immutable maxTaxBps;

@@ -91,11 +91,11 @@ library CurveMath {
     /// @notice Native currency the curve will have collected once `tokensSold` have been sold.
     /// @dev Pure function of the starting parameters, so the graduation target is knowable and
     ///      verifiable before the first trade rather than being an operator-set threshold.
-    function nativeRaisedAfterSelling(
-        uint256 virtualNativeStart,
-        uint256 virtualTokenStart,
-        uint256 tokensSold
-    ) internal pure returns (uint256) {
+    function nativeRaisedAfterSelling(uint256 virtualNativeStart, uint256 virtualTokenStart, uint256 tokensSold)
+        internal
+        pure
+        returns (uint256)
+    {
         return nativeInForExactTokensOut(virtualNativeStart, virtualTokenStart, tokensSold);
     }
 }

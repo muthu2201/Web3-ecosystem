@@ -167,9 +167,7 @@ contract CurveMathTest is Test {
 
     /// @dev Buying the entire virtual token reserve is unreachable: it would need infinite input.
     function test_CannotBuyEntireVirtualReserve() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(CurveMath.InsufficientCurveSupply.selector, V_TOKEN, V_TOKEN)
-        );
+        vm.expectRevert(abi.encodeWithSelector(CurveMath.InsufficientCurveSupply.selector, V_TOKEN, V_TOKEN));
         m.nativeIn(V_NATIVE, V_TOKEN, V_TOKEN);
     }
 

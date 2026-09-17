@@ -132,9 +132,7 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         returns (address token)
     {
         uint256 fee = _collectFee();
-        token = address(
-            new StandardToken{salt: _salt(p.salt)}(p.name, p.symbol, p.supply, p.recipient, msg.sender)
-        );
+        token = address(new StandardToken{salt: _salt(p.salt)}(p.name, p.symbol, p.supply, p.recipient, msg.sender));
         _register(token, Template.Standard, p.name, p.symbol, p.supply, fee);
     }
 
@@ -148,9 +146,7 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     {
         uint256 fee = _collectFee();
         token = address(
-            new MintableToken{salt: _salt(p.salt)}(
-                p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin
-            )
+            new MintableToken{salt: _salt(p.salt)}(p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin)
         );
         _register(token, Template.Mintable, p.name, p.symbol, p.initialSupply, fee);
     }
@@ -164,9 +160,7 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         returns (address token)
     {
         uint256 fee = _collectFee();
-        token = address(
-            new PausableToken{salt: _salt(p.salt)}(p.name, p.symbol, p.supply, p.recipient, admin)
-        );
+        token = address(new PausableToken{salt: _salt(p.salt)}(p.name, p.symbol, p.supply, p.recipient, admin));
         _register(token, Template.Pausable_, p.name, p.symbol, p.supply, fee);
     }
 
@@ -180,22 +174,14 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     {
         uint256 fee = _collectFee();
         token = address(
-            new GovernanceToken{salt: _salt(p.salt)}(
-                p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin
-            )
+            new GovernanceToken{salt: _salt(p.salt)}(p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin)
         );
         _register(token, Template.Governance, p.name, p.symbol, p.initialSupply, fee);
     }
 
     /// @notice Deploy a token with a monotonically non-increasing buy/sell tax.
     /// @dev Limited routability: pair only into v2-style pools. See `TaxToken`.
-    function deployTax(TaxParams calldata p)
-        external
-        payable
-        whenNotPaused
-        nonReentrant
-        returns (address token)
-    {
+    function deployTax(TaxParams calldata p) external payable whenNotPaused nonReentrant returns (address token) {
         uint256 fee = _collectFee();
         token = address(
             new TaxToken{salt: _salt(p.salt)}(
@@ -245,15 +231,9 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     /// @dev The SDK derives `initCodeHash` from the compiled artifact, so the UI can show the
     ///      final token address before the user signs, and prove the same address is reachable on
     ///      every EVM chain with identical CREATE2 semantics.
-    function computeAddress(address deployer, bytes32 userSalt, bytes32 initCodeHash)
-        public
-        view
-        returns (address)
-    {
+    function computeAddress(address deployer, bytes32 userSalt, bytes32 initCodeHash) public view returns (address) {
         bytes32 salt = effectiveSalt(deployer, userSalt);
-        return address(
-            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash))))
-        );
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
     }
 
     // ---------------------------------------------------------------------
@@ -339,8 +319,9 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 initialSupply,
         uint256 feePaid
     ) private {
-        _deploymentOf[token] =
-            Deployment({deployer: msg.sender, deployedAt: uint64(block.timestamp), template: template});
+        _deploymentOf[token] = Deployment({
+            deployer: msg.sender, deployedAt: uint64(block.timestamp), template: template
+        });
         _tokensByDeployer[msg.sender].push(token);
         _allTokens.push(token);
         emit TokenDeployed(token, msg.sender, template, name, symbol, initialSupply, feePaid);

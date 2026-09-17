@@ -12,7 +12,7 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 contract NftTest is Fixture {
     NftCollection internal collection;
 
-    uint256 internal constant MAX_SUPPLY = 1_000;
+    uint256 internal constant MAX_SUPPLY = 1000;
     uint256 internal constant PRICE = 0.05 ether;
 
     uint256 internal makerPk = 0xA11CE;
@@ -75,9 +75,7 @@ contract NftTest is Fixture {
 
     function test_MintRequiresExactPayment() public {
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(NftCollection.IncorrectPayment.selector, PRICE, PRICE * 2)
-        );
+        vm.expectRevert(abi.encodeWithSelector(NftCollection.IncorrectPayment.selector, PRICE, PRICE * 2));
         collection.mint{value: PRICE}(0, 2, new bytes32[](0));
     }
 
@@ -222,8 +220,8 @@ contract NftTest is Fixture {
 
     function test_RoyaltyIsCappedAtTenPercent() public {
         vm.prank(creator);
-        vm.expectRevert(abi.encodeWithSelector(NftCollection.RoyaltyTooHigh.selector, 1_001, 1_000));
-        collection.setDefaultRoyalty(creator, 1_001);
+        vm.expectRevert(abi.encodeWithSelector(NftCollection.RoyaltyTooHigh.selector, 1001, 1000));
+        collection.setDefaultRoyalty(creator, 1001);
     }
 
     function test_RoyaltyInfoReportsConfiguredShare() public view {
@@ -307,7 +305,7 @@ contract NftTest is Fixture {
         collection.setApprovalForAll(address(marketplace), true);
 
         MockERC20 usdc = new MockERC20("USD Coin", "USDC", 6);
-        uint256 price = 1_000e6;
+        uint256 price = 1000e6;
         usdc.mint(alice, price);
         vm.prank(alice);
         usdc.approve(address(marketplace), price);
@@ -456,9 +454,7 @@ contract NftTest is Fixture {
         bytes memory sig = _sign(order);
 
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(NftMarketplace.IncorrectPayment.selector, 0.5 ether, 1 ether)
-        );
+        vm.expectRevert(abi.encodeWithSelector(NftMarketplace.IncorrectPayment.selector, 0.5 ether, 1 ether));
         marketplace.fulfillListing{value: 0.5 ether}(order, sig);
     }
 
