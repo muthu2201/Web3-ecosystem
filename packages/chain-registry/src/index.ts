@@ -190,7 +190,9 @@ export const BSC_TESTNET: ChainConfig = {
   shortName: 'bsc-testnet',
   testnet: true,
   nativeCurrency: { name: 'Test BNB', symbol: 'tBNB', decimals: 18 },
-  publicRpcUrls: ['https://data-seed-prebsc-1-s1.bnbchain.org:8545'],
+  // The data-seed-prebsc endpoint this used to point at is unreachable: it refuses connections
+  // rather than erroring, so every read on this chain hung instead of failing. Verified working.
+  publicRpcUrls: ['https://bsc-testnet-rpc.publicnode.com'],
   blockExplorer: { name: 'BscScan Testnet', url: 'https://testnet.bscscan.com' },
   capabilities: { ...EVM_CANCUN, hasAggregatorSupport: false },
   multicall3: MULTICALL3,

@@ -145,6 +145,10 @@ It checks chain identity, that the deployer can actually pay for ~25M gas, that 
 contract rather than a lone key, and that the router and its factory answer the exact calls the
 contracts make. It only ever reads; it never signs.
 
+**Test on BSC Testnet.** Every Sepolia faucet now gates on holding a mainnet balance, which makes
+a cold wallet unable to start. BNB testnet still has faucets that drip to a brand-new address, so
+that is the rehearsal chain. A full deploy there costs 0.0025 tBNB against a 0.1 tBNB drip.
+
 Verified routers, each confirmed against the live chain:
 
 | Chain | Chain ID | Router (Uniswap V2 / PancakeSwap V2) |
