@@ -8,6 +8,52 @@ Newest first.
 
 ---
 
+## The owner and treasury is a MetaMask EOA, and the revenue address is changeable by design
+
+**Decided:** 17 Sep 2026
+
+The Coinbase Base Account was abandoned as owner. Of the three blockers it produced, only one was
+genuinely the wallet's: `keys.coinbase.com` refuses to sign for Base Sepolia at all
+("This chain is not supported"). That is not a settings toggle, and it would recur on every
+testnet and every chain Coinbase chooses not to serve. The other two were a wrong tool call on our
+side, and faucet gating that has nothing to do with which wallet holds an address.
+
+Owner and treasury is now `0x7Dd4B2E211dD40134eDf9736690497E057D45233` — a plain MetaMask EOA,
+verified as a valid checksummed address holding a balance on Base with no code. No code change was
+needed anywhere: `apps/web/src/wagmi.ts` already uses the `injected()` connector, which MetaMask
+satisfies, and `SAFE_ADDRESS` is an environment variable.
+
+**What it changed:** the owner is a constructor argument, so most CREATE2 addresses moved. Free to
+do now, expensive after launch — which is the argument for settling wallet choice before
+deploying rather than after. `LiquidityLocker`, `TokenVesting` and `MerkleDistributor` keep their
+addresses because they take no constructor arguments and have no owner at all.
+
+### The revenue address was already changeable
+
+The request to make revenue collection upgradable needed no work: `FeeRouter` has carried a
+timelocked two-step treasury change since it was written.
+
+| Function | Effect |
+|---|---|
+| `proposeTreasury(address)` | queues a new treasury, `eta = now + timelockDelay` (48h) |
+| `executeTreasury()` | applies it, but only once the ETA has passed |
+| `cancelTreasury()` | drops a queued change |
+| `pendingTreasury()` | public view — anyone can see a pending change and its ETA |
+
+The delay is deliberate and is the whole point: a compromised owner key cannot silently redirect
+revenue, because the change is visible on-chain for two days before it can take effect. An
+instant setter would have been easier to use and worth nothing.
+
+Moving ownership to a multisig later uses `Ownable2Step` — `transferOwnership` then
+`acceptOwnership` from the new owner. The two steps matter: ownership cannot be handed to an
+address that is unable to accept it, so a typo cannot brick the contract.
+
+Both paths are owner-only and neither is one-way, which is the correct shape here. The bindings
+that *are* one-way — implementations and token deployers — are one-way on purpose, because those
+are what make the guarantees structural rather than promised.
+
+---
+
 ## Base mainnet is the first deployment, and there is no public testnet rehearsal
 
 **Decided:** 17 Sep 2026
