@@ -27,7 +27,11 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # Pinned, not `stable`. The compiler version is part of what determines the deployed
+          # bytecode, so a moving toolchain means CI cannot reproduce a build - and `stable`
+          # moving is exactly what turned every contract job red here with no code change.
+          # Bump this deliberately, with the suite re-run against the new version.
+          version: v1.5.1
 
       # Mocks are fine in contracts/test/. A mock reaching src/ or the production deploy script
       # is the kind of mistake that reads as harmless in review and is catastrophic on chain, so
@@ -69,9 +73,19 @@ jobs:
         working-directory: contracts
         run: forge test -vvv
 
+      # forge coverage cannot use via_ir, and this codebase does not compile without it - plain
+      # `forge coverage` dies with "Stack too deep". --ir-minimum is Foundry's supported answer,
+      # and it needs two exclusions to get through:
+      #   --skip script/**        the fixture generator exceeds the stack under minimal IR
+      #   --no-match-contract     CodeSizeTest asserts EIP-170 limits, and minimal optimisation
+      #                           inflates bytecode, so it fails here for a reason that does not
+      #                           exist in a real build. That limit is still enforced - by the
+      #                           full `forge test` run above and by the dedicated size gate.
       - name: Coverage
         working-directory: contracts
-        run: forge coverage --report summary --report lcov --no-match-coverage "(test|script)"
+        run: |
+          forge coverage --ir-minimum --skip 'script/**' --no-match-contract CodeSizeTest \
+            --report summary --report lcov --no-match-coverage "(test|script)"
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -88,7 +102,11 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # Pinned, not `stable`. The compiler version is part of what determines the deployed
+          # bytecode, so a moving toolchain means CI cannot reproduce a build - and `stable`
+          # moving is exactly what turned every contract job red here with no code change.
+          # Bump this deliberately, with the suite re-run against the new version.
+          version: v1.5.1
 
       - uses: actions/setup-python@v5
         with:
@@ -105,7 +123,10 @@ jobs:
       # because the noise floor on those would make the gate meaningless and it would be muted.
       - name: Run Slither
         working-directory: contracts
-        run: slither . --config-file slither.config.json --fail-high --fail-medium
+        # --fail-medium alone, not --fail-high --fail-medium: Slither now rejects both together
+        # ("argument --fail-medium: not allowed with argument --fail-high"). They are thresholds,
+        # and --fail-medium means "medium or greater", so it already subsumes high. Same gate.
+        run: slither . --config-file slither.config.json --fail-medium
 
   typescript:
     name: TypeScript (typecheck, test)
@@ -113,9 +134,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose. pnpm/action-setup reads packageManager from package.json,
+      # and supplying both is now a hard error. One source of truth, and it is the one pnpm
+      # itself enforces at runtime.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -125,7 +147,11 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # Pinned, not `stable`. The compiler version is part of what determines the deployed
+          # bytecode, so a moving toolchain means CI cannot reproduce a build - and `stable`
+          # moving is exactly what turned every contract job red here with no code change.
+          # Bump this deliberately, with the suite re-run against the new version.
+          version: v1.5.1
 
       - run: pnpm install --frozen-lockfile
 
@@ -164,9 +190,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose. pnpm/action-setup reads packageManager from package.json,
+      # and supplying both is now a hard error. One source of truth, and it is the one pnpm
+      # itself enforces at runtime.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -176,7 +203,11 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # Pinned, not `stable`. The compiler version is part of what determines the deployed
+          # bytecode, so a moving toolchain means CI cannot reproduce a build - and `stable`
+          # moving is exactly what turned every contract job red here with no code change.
+          # Bump this deliberately, with the suite re-run against the new version.
+          version: v1.5.1
 
       - run: pnpm install --frozen-lockfile
 
@@ -218,9 +249,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose. pnpm/action-setup reads packageManager from package.json,
+      # and supplying both is now a hard error. One source of truth, and it is the one pnpm
+      # itself enforces at runtime.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
