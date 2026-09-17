@@ -3,18 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Web3 Ecosystem</title>
-    <meta name="description" content="Non-custodial multi-chain token launcher, swap and NFT platform." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a0d12" />
+    <title>Web3 Ecosystem — non-custodial multi-chain launchpad</title>
+    <meta
+      name="description"
+      content="Deploy tokens, launch on a bonding curve, run a presale, mint NFTs, swap and lock liquidity. Non-custodial: every action is a transaction you sign yourself."
+    />
+    <meta property="og:title" content="Web3 Ecosystem" />
+    <meta
+      property="og:description"
+      content="Non-custodial multi-chain token launcher, bonding-curve launchpad, presale, NFT suite and swap."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
     <!--
       A strict CSP is the main defence against the attack that took $1.46B from Bybit in
       February 2025: injected JavaScript in a served front-end, with no contract exploited at all.
+
       'wasm-unsafe-eval' is required by some wallet SDKs; connect-src is restricted to the
-      platform's own edge proxy plus wallet RPC endpoints, so an injected script has nowhere to
-      exfiltrate to even if it executes.
+      platform's own edge proxy plus the RPC endpoints in the chain registry, so an injected
+      script has nowhere to exfiltrate to even if it executes.
+
+      frame-ancestors is absent here on purpose: browsers ignore it when it arrives in a meta
+      element, and warn about it. It is delivered as an X-Frame-Options header instead — see
+      vercel.json, which also re-sends this whole policy as a real CSP header.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.workers.dev https://mainnet.base.org https://bsc-dataseed.bnbchain.org wss:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.workers.dev https://mainnet.base.org https://sepolia.base.org https://bsc-dataseed.bnbchain.org https://data-seed-prebsc-1-s1.bnbchain.org:8545 wss:; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'"
     />
     <meta name="referrer" content="no-referrer" />
   </head>

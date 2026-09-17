@@ -10,7 +10,7 @@
  * on-chain library. If either implementation drifts, this fails.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -35,6 +35,21 @@ interface Fixture {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(here, '../../../contracts/artifacts/curve-fixtures.json');
+
+/**
+ * Deliberately not generated on the fly.
+ *
+ * These fixtures come from executing the real Solidity library, and regenerating them inside the
+ * test would mean the test could never fail on a stale corpus - it would simply refresh it and
+ * agree with itself. Failing with the command to run keeps the comparison meaningful.
+ */
+if (!existsSync(fixturePath)) {
+  throw new Error(
+    `Curve fixtures are missing at ${fixturePath}.\n` +
+      'Generate them from the Solidity library first:\n' +
+      '  cd contracts && forge build && forge script script/GenerateCurveFixtures.s.sol',
+  );
+}
 
 const fixtures: Fixture[] = JSON.parse(readFileSync(fixturePath, 'utf8')) as Fixture[];
 

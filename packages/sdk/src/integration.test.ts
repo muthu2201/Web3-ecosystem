@@ -15,11 +15,20 @@ import { evmCaip2 } from '@web3eco/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { BondingCurveAdapter, deadlineFromChain } from './curve.js';
+import { LiquidityLockerAdapter } from './locker.js';
+import { NftAdapter } from './nft.js';
+import { PresaleAdapter, tokensNeededFor, type PresaleCreateOptions } from './presale.js';
 import { TokenFactoryAdapter, computeCreate2Address, effectiveSalt } from './tokens.js';
-import { TokenFactoryAbi } from './generated/index.js';
+import { StandardTokenAbi, TokenFactoryAbi } from './generated/index.js';
 import { ViemChainReader } from './reader.js';
 
-import { deployEcosystem, startAnvil, TEST_ACCOUNT, TEST_PRIVATE_KEY } from '../../../scripts/local-chain.mjs';
+import {
+  deployEcosystem,
+  rpc,
+  startAnvil,
+  TEST_ACCOUNT,
+  TEST_PRIVATE_KEY,
+} from '../../../scripts/local-chain.mjs';
 
 import { createWalletClient, encodeFunctionData, decodeAbiParameters, http, parseAbiParameters } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -32,6 +41,9 @@ let anvil: { rpcUrl: string; stop: () => void };
 let reader: ViemChainReader;
 let tokens: TokenFactoryAdapter;
 let curves: BondingCurveAdapter;
+let presales: PresaleAdapter;
+let nfts: NftAdapter;
+let locker: LiquidityLockerAdapter;
 let manifest: Record<string, Address>;
 
 beforeAll(async () => {
@@ -83,6 +95,9 @@ beforeAll(async () => {
   const readerFor = () => reader;
   tokens = new TokenFactoryAdapter(readerFor);
   curves = new BondingCurveAdapter(readerFor);
+  presales = new PresaleAdapter(readerFor);
+  nfts = new NftAdapter(readerFor);
+  locker = new LiquidityLockerAdapter(readerFor);
 }, 180_000);
 
 afterAll(() => {
@@ -246,5 +261,329 @@ describe('bonding curve, end to end on a real chain', () => {
     const snapshot = await curves.readCurve(CHAIN, curveAddress);
     const balance = await reader.getBalance(curveAddress);
     expect(balance).toBe(snapshot.realNativeReserve);
+  });
+});
+
+/**
+ * Helpers shared by the sale, collection and locker suites below.
+ *
+ * `deployToken` gives each suite its own fresh ERC-20 rather than reusing one across them, so a
+ * balance consumed by one test cannot silently change the outcome of another.
+ */
+async function deployToken(salt: Hex, symbol: string, supply: bigint): Promise<Address> {
+  const options = {
+    template: 'standard' as const,
+    name: symbol,
+    symbol,
+    supply,
+    recipient: TEST_ACCOUNT as Address,
+    salt,
+  };
+  const predicted = await tokens.predictAddress(CHAIN, TEST_ACCOUNT as Address, options);
+  await send(await tokens.buildDeploy(CHAIN, options));
+  return predicted;
+}
+
+/** Advance the chain's clock. Anvil only, and the reason every deadline is read from the chain. */
+async function warp(seconds: number): Promise<void> {
+  await rpc(anvil.rpcUrl, 'evm_increaseTime', [seconds]);
+  await rpc(anvil.rpcUrl, 'evm_mine', []);
+}
+
+async function balanceOf(token: Address, who: Address): Promise<bigint> {
+  const raw = await reader.call(
+    token,
+    encodeFunctionData({ abi: StandardTokenAbi, functionName: 'balanceOf', args: [who] }),
+  );
+  return decodeAbiParameters(parseAbiParameters('uint256'), raw)[0];
+}
+
+describe('presale, end to end on a real chain', () => {
+  let token: Address;
+  let presale: Address;
+  let options: PresaleCreateOptions;
+
+  const SALT = '0xbbbb000000000000000000000000000000000000000000000000000000000001' as Hex;
+  const HARD_CAP = 4n * 10n ** 18n;
+  const SOFT_CAP = 10n ** 18n;
+
+  it('funds the sale with exactly the tokens the SDK computed', async () => {
+    token = await deployToken(
+      '0xbbbb000000000000000000000000000000000000000000000000000000000002' as Hex,
+      'SALE',
+      1_000_000n * 10n ** 18n,
+    );
+
+    const now = await reader.getBlockTimestamp();
+    options = {
+      chain: CHAIN,
+      token,
+      tokensPerNative: 1_000n * 10n ** 18n,
+      liquidityTokensPerNative: 800n * 10n ** 18n,
+      softCap: SOFT_CAP,
+      hardCap: HARD_CAP,
+      minContribution: 10n ** 16n,
+      maxContribution: 2n * 10n ** 18n,
+      startsAt: now + 120,
+      endsAt: now + 120 + 7_200,
+      liquidityBps: 7_000,
+      lockLpInsteadOfBurn: false,
+      lpLockDurationSeconds: 0,
+      whitelistRoot: `0x${'0'.repeat(64)}` as Hex,
+      isFairLaunch: false,
+      salt: SALT,
+    };
+
+    presale = await presales.predictPresaleAddress(CHAIN, TEST_ACCOUNT as Address, SALT);
+    const batch = await presales.buildCreatePresale(options);
+    expect(batch.calls).toHaveLength(2); // exact approval, then creation
+
+    for (const call of batch.calls) await send(call);
+
+    // The whole point of computing `tokensNeeded` client-side: the figure shown to the creator
+    // before they approve must be the figure the factory actually pulls. A mismatch would mean
+    // either a failed creation or an over-approval.
+    const funded = await balanceOf(token, presale);
+    expect(funded).toBe(tokensNeededFor(options));
+
+    expect(await presales.isPlatformPresale(CHAIN, presale)).toBe(true);
+  });
+
+  it('reads the sale back with the parameters it was created with', async () => {
+    const snapshot = await presales.readPresale(CHAIN, presale);
+    expect(snapshot.token.toLowerCase()).toBe(token.toLowerCase());
+    // The factory overwrites `owner` with msg.sender, which is what stops a sale being created
+    // on someone else's behalf and pointed at an attacker's payout address.
+    expect(snapshot.owner.toLowerCase()).toBe(TEST_ACCOUNT.toLowerCase());
+    expect(snapshot.state).toBe('pending');
+    expect(snapshot.softCap).toBe(SOFT_CAP);
+    expect(snapshot.hardCap).toBe(HARD_CAP);
+    expect(snapshot.liquidityBps).toBe(7_000n);
+    expect(snapshot.whitelisted).toBe(false);
+    expect(snapshot.isFairLaunch).toBe(false);
+  });
+
+  it('accepts a contribution once the window opens and records the allocation', async () => {
+    await warp(180);
+    expect((await presales.readPresale(CHAIN, presale)).state).toBe('live');
+
+    const amount = 2n * 10n ** 18n;
+    await send(await presales.buildContribute(CHAIN, presale, amount, []));
+
+    const position = await presales.readPosition(CHAIN, presale, TEST_ACCOUNT as Address);
+    expect(position.contribution).toBe(amount);
+    expect(position.allocation).toBe((amount * options.tokensPerNative) / 10n ** 18n);
+    expect(position.hasClaimed).toBe(false);
+
+    const snapshot = await presales.readPresale(CHAIN, presale);
+    expect(snapshot.totalRaised).toBe(amount);
+    expect(snapshot.state).toBe('live');
+  });
+
+  it('moves to awaiting finalisation when the window closes above the soft cap', async () => {
+    await warp(7_200);
+    expect((await presales.readPresale(CHAIN, presale)).state).toBe('awaitingFinalisation');
+  });
+
+  it('finalises, seeds the pool, and pays out exactly the recorded allocation', async () => {
+    await send(await presales.buildFinalise(CHAIN, presale));
+    expect((await presales.readPresale(CHAIN, presale)).state).toBe('succeeded');
+
+    const before = await balanceOf(token, TEST_ACCOUNT as Address);
+    const owed = (await presales.readPosition(CHAIN, presale, TEST_ACCOUNT as Address)).allocation;
+
+    await send(await presales.buildClaim(CHAIN, presale));
+
+    expect(await balanceOf(token, TEST_ACCOUNT as Address)).toBe(before + owed);
+    expect(
+      (await presales.readPosition(CHAIN, presale, TEST_ACCOUNT as Address)).hasClaimed,
+    ).toBe(true);
+  });
+
+  it('lists the sale through the factory’s pagination', async () => {
+    const total = await presales.totalPresales(CHAIN);
+    expect(total).toBeGreaterThan(0);
+    const page = await presales.listPresales(CHAIN, 0, total);
+    expect(page.map((a) => a.toLowerCase())).toContain(presale.toLowerCase());
+  });
+});
+
+describe('presale refunds when the soft cap is missed', () => {
+  it('reports "failed" and refunds the contributor in full', async () => {
+    const token = await deployToken(
+      '0xbbbb000000000000000000000000000000000000000000000000000000000003' as Hex,
+      'FAIL',
+      1_000_000n * 10n ** 18n,
+    );
+    const salt = '0xbbbb000000000000000000000000000000000000000000000000000000000004' as Hex;
+    const now = await reader.getBlockTimestamp();
+
+    const options: PresaleCreateOptions = {
+      chain: CHAIN,
+      token,
+      tokensPerNative: 1_000n * 10n ** 18n,
+      liquidityTokensPerNative: 800n * 10n ** 18n,
+      // A soft cap deliberately above what will be contributed.
+      softCap: 3n * 10n ** 18n,
+      hardCap: 5n * 10n ** 18n,
+      minContribution: 10n ** 16n,
+      maxContribution: 10n ** 18n,
+      startsAt: now + 120,
+      endsAt: now + 120 + 7_200,
+      liquidityBps: 6_000,
+      lockLpInsteadOfBurn: false,
+      lpLockDurationSeconds: 0,
+      whitelistRoot: `0x${'0'.repeat(64)}` as Hex,
+      isFairLaunch: true,
+      salt,
+    };
+
+    const presale = await presales.predictPresaleAddress(CHAIN, TEST_ACCOUNT as Address, salt);
+    for (const call of (await presales.buildCreatePresale(options)).calls) await send(call);
+
+    await warp(180);
+    const contribution = 10n ** 18n;
+    await send(await presales.buildContribute(CHAIN, presale, contribution, []));
+
+    await warp(7_200);
+    expect((await presales.readPresale(CHAIN, presale)).state).toBe('failed');
+
+    const balanceBefore = await reader.getBalance(TEST_ACCOUNT as Address);
+    await send(await presales.buildRefund(CHAIN, presale));
+    const balanceAfter = await reader.getBalance(TEST_ACCOUNT as Address);
+
+    // Gas makes the net change smaller than the contribution, but the contract must return the
+    // full amount: the sale's own balance is what proves it.
+    expect(balanceAfter).toBeGreaterThan(balanceBefore);
+    expect(await reader.getBalance(presale)).toBe(0n);
+    expect(
+      (await presales.readPosition(CHAIN, presale, TEST_ACCOUNT as Address)).hasRefunded,
+    ).toBe(true);
+  });
+});
+
+describe('NFT collection, end to end on a real chain', () => {
+  let collection: Address;
+
+  it('deploys a collection through the factory', async () => {
+    const tx = await nfts.buildDeployCollection({
+      chain: CHAIN,
+      name: 'Cold Horizons',
+      symbol: 'HRZN',
+      baseURI: 'ipfs://bafy/',
+      contractURI: 'ipfs://bafy/collection.json',
+      maxSupply: 100n,
+      owner: TEST_ACCOUNT as Address,
+      royaltyReceiver: TEST_ACCOUNT as Address,
+      royaltyBps: 500,
+      salt: '0xcccc000000000000000000000000000000000000000000000000000000000001' as Hex,
+    });
+    expect(tx.value).toBe(1_000_000_000_000_000n); // 0.001 ether, the configured deploy fee
+    await send(tx);
+
+    const total = await nfts.totalCollections(CHAIN);
+    expect(total).toBe(1);
+    const [only] = await nfts.listCollections(CHAIN, 0, 1);
+    collection = only as Address;
+
+    const snapshot = await nfts.readCollection(CHAIN, collection);
+    expect(snapshot.name).toBe('Cold Horizons');
+    expect(snapshot.symbol).toBe('HRZN');
+    expect(snapshot.maxSupply).toBe(100n);
+    expect(snapshot.totalMinted).toBe(0n);
+    expect(snapshot.metadataFrozen).toBe(false);
+    expect(snapshot.isPlatformCollection).toBe(true);
+  });
+
+  it('adds a phase and mints from it at exactly the quoted price', async () => {
+    const now = await reader.getBlockTimestamp();
+    const price = 10n ** 16n; // 0.01 ETH
+
+    await send(
+      await nfts.buildAddPhase(CHAIN, collection, {
+        merkleRoot: `0x${'0'.repeat(64)}` as Hex,
+        price,
+        startsAt: now,
+        endsAt: now + 86_400,
+        maxPerWallet: 5,
+        maxSupply: 0,
+      }),
+    );
+
+    const phase = await nfts.readPhase(CHAIN, collection, 0);
+    expect(phase.price).toBe(price);
+    expect(phase.maxPerWallet).toBe(5);
+
+    const quantity = 3n;
+    const mint = await nfts.buildMint(CHAIN, collection, 0, quantity, []);
+    // The contract rejects both under- and overpayment, so the SDK's value must be exact.
+    expect(mint.value).toBe(price * quantity);
+    await send(mint);
+
+    const after = await nfts.readCollection(CHAIN, collection);
+    expect(after.totalMinted).toBe(quantity);
+    expect(await nfts.mintedInPhase(CHAIN, collection, 0, TEST_ACCOUNT as Address)).toBe(quantity);
+    // Proceeds are pulled by the owner, not pushed, so they sit in the contract until withdrawn.
+    expect(after.proceeds).toBeGreaterThan(0n);
+  });
+
+  it('lets the owner withdraw the accrued proceeds', async () => {
+    const before = await nfts.readCollection(CHAIN, collection);
+    await send(await nfts.buildWithdrawProceeds(CHAIN, collection, TEST_ACCOUNT as Address));
+    const after = await nfts.readCollection(CHAIN, collection);
+    expect(before.proceeds).toBeGreaterThan(0n);
+    expect(after.proceeds).toBe(0n);
+  });
+});
+
+describe('liquidity locker, end to end on a real chain', () => {
+  it('locks tokens and refuses to release them before the unlock time', async () => {
+    const token = await deployToken(
+      '0xdddd000000000000000000000000000000000000000000000000000000000001' as Hex,
+      'LOCK',
+      1_000n * 10n ** 18n,
+    );
+    const amount = 100n * 10n ** 18n;
+    const now = await reader.getBlockTimestamp();
+    const unlockTime = now + 30 * 86_400;
+
+    const batch = await locker.buildLock(
+      CHAIN,
+      token,
+      amount,
+      unlockTime,
+      TEST_ACCOUNT as Address,
+    );
+    expect(batch.calls).toHaveLength(2); // exact approval, then the lock
+    for (const call of batch.calls) await send(call);
+
+    const ids = await locker.lockIdsOfOwner(CHAIN, TEST_ACCOUNT as Address);
+    expect(ids.length).toBeGreaterThan(0);
+    const lockId = ids[ids.length - 1] as bigint;
+
+    const record = await locker.readLock(CHAIN, lockId);
+    expect(record.token.toLowerCase()).toBe(token.toLowerCase());
+    expect(record.owner.toLowerCase()).toBe(TEST_ACCOUNT.toLowerCase());
+    expect(record.amount).toBe(amount);
+    expect(record.unlockTime).toBe(unlockTime);
+    expect(record.unlocked).toBe(false);
+
+    const summary = await locker.lockSummary(CHAIN, token);
+    expect(summary.amount).toBe(amount);
+    expect(summary.latestUnlock).toBe(unlockTime);
+
+    // Withdrawing early must revert. Anything else would make the lock meaningless.
+    const early = await locker.buildWithdraw(CHAIN, lockId, amount, TEST_ACCOUNT as Address);
+    await expect(
+      wallet().sendTransaction({ to: early.to, data: early.data, value: early.value }),
+    ).rejects.toThrow();
+
+    // Past the unlock, the same call succeeds and the tokens come back in full.
+    await warp(30 * 86_400 + 60);
+    expect((await locker.readLock(CHAIN, lockId)).unlocked).toBe(true);
+
+    const before = await balanceOf(token, TEST_ACCOUNT as Address);
+    await send(await locker.buildWithdraw(CHAIN, lockId, amount, TEST_ACCOUNT as Address));
+    expect(await balanceOf(token, TEST_ACCOUNT as Address)).toBe(before + amount);
   });
 });

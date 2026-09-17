@@ -6,7 +6,11 @@ node_modules/
 contracts/out/
 contracts/cache/
 contracts/broadcast/
-contracts/artifacts/
+# Contents are build output, but the directory itself must exist: Foundry's vm.writeFile
+# cannot create a parent directory, so a missing artifacts/ fails the fixture generation and
+# the local deployment on every fresh clone.
+contracts/artifacts/*
+!contracts/artifacts/.gitkeep
 lcov.info
 
 # Builds

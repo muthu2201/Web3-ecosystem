@@ -68,12 +68,43 @@ packages/
   adapters/         0x, GoPlus, GeckoTerminal, Etherscan V2, IPFS, simulation
 
 apps/
-  web/              Static React front-end
+  web/              Static React front-end (Tailwind v4, three.js hero, 13 routes)
   edge/             Cloudflare Worker: API-key custodian, rate limiter, cache
   mcp/              Remote MCP server returning unsigned transactions
 
 scripts/stress/     Full-ecosystem load harness
 ```
+
+## The interface
+
+A static React bundle with no server of its own. Thirteen routes, one per contract capability:
+
+| Route | What it does |
+| --- | --- |
+| `/` | Landing page; the hero renders the real bonding curve with three.js |
+| `/explore` | Live market listing, read from the curve factory's own registry |
+| `/curve/:address` | Bonding-curve trading, quoted locally from on-chain reserves |
+| `/launch` | One-transaction launch onto a bonding curve |
+| `/deploy` | Token deployment across all six templates, with the address predicted first |
+| `/swap` | Aggregator or direct-router swap, every fee itemised |
+| `/presale`, `/presale/:address` | Create a presale or fair launch; contribute, claim, refund |
+| `/nft`, `/nft/:address` | Deploy a collection; configure phases and mint |
+| `/lock` | Lock liquidity, extend a lock, verify any token's locked supply |
+| `/token`, `/token/:address` | Token profile with risk flags read from the contract |
+
+Three properties hold on every one of them:
+
+- **Nothing is read from a database.** Listings, prices, risk flags and sale state all come from
+  chain reads, which is why there is no backend to run and no cache to go stale.
+- **Nothing is signed without a simulation.** Every transaction goes through a review step that
+  simulates the exact payload about to be signed. A failed simulation blocks signing rather than
+  warning, and "could not be checked" is shown as its own state, never as success.
+- **Quotes are computed locally.** The curve maths in `@web3eco/core` is differential-tested
+  byte-for-byte against the Solidity library, so a price can update per keystroke without an RPC
+  round trip and still be the number the chain produces.
+
+Run it locally with `pnpm --filter @web3eco/web dev`. It needs `VITE_DEPLOYMENTS` to reach any
+contract; without it, every contract-backed route says so plainly instead of failing obscurely.
 
 ## Getting started
 
@@ -133,6 +164,30 @@ caught it. CI now enforces the limit explicitly.
 Additionally, **differential tests** run 160 generated cases through both the Solidity curve
 library and its TypeScript port and require byte-exact equality, so the price the interface quotes
 is the price the chain will produce.
+
+## Branches and dependencies
+
+Two branches, permanently:
+
+- `main` — the stable line. Complete and releasable: contracts, SDK, workers, web app, and the
+  full test suite. Nothing merges here that CI has not proven green.
+- `develop` — where work lands before it is merged to `main`.
+
+Tests live on `main` alongside the code they test, because a branch whose tests were removed is
+a branch nothing can verify. What is kept out of production code is *mocks*, and that is enforced
+mechanically rather than by convention: `scripts/check-production-isolation.mjs` fails the build
+if anything in `contracts/src/` or the production `Deploy.s.sol` imports from `test/` or names a
+mock. `script/DeployLocal.s.sol` is the single exemption, and the reason is recorded in the
+exemption itself. CI runs the check before it runs anything else.
+
+**Dependabot is deliberately not enabled.** There is no `.github/dependabot.yml`, and adding one
+is what would switch version-update PRs on. Dependencies here are upgraded deliberately and in
+one batch, because an upgrade to this repository has to clear the whole gate — production
+isolation, a frozen-lockfile install, 13 typecheck targets, 8 build targets, 292 TypeScript
+tests, 185 contract tests, `forge fmt`, and a responsive re-audit of all 13 routes. A stream of
+single-dependency bot PRs cannot clear that gate individually and would either sit unmerged or
+get waved through, which is worse than not having them. Dependabot *security alerts* are a
+repository setting rather than a file; leave those on and act on them by hand.
 
 ## Honest limitations
 

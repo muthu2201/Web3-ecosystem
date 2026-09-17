@@ -4,9 +4,10 @@
  * A routed swap stacks an LP fee, the aggregator's own fee and the platform's integrator fee.
  * Showing only the platform's share understates what the user pays, and several front-ends have
  * been caught doing exactly that. This renders every line the quote reports and states the
- * ceiling that the fee can never exceed, which is the claim the FeeRouter actually enforces.
+ * ceiling the fee can never exceed, which is the claim the FeeRouter actually enforces.
  */
 
+import type { JSX } from 'react';
 import type { QuoteFee } from '@web3eco/core';
 import { formatUnits } from '@web3eco/core';
 
@@ -29,40 +30,43 @@ export function FeeDisclosure({
   symbol: string;
   hardCapBps?: number;
 }): JSX.Element {
-  const total = fees
-    .filter((f) => f.kind !== 'network')
-    .reduce((sum, f) => sum + f.amount, 0n);
+  // Gas is excluded from the total because it is paid to validators, not to anyone in this
+  // routing path, and folding it in would make the platform's take look larger than it is.
+  const total = fees.filter((f) => f.kind !== 'network').reduce((sum, f) => sum + f.amount, 0n);
 
   return (
-    <div style={{ border: '1px solid #2a2a2a', borderRadius: 6, padding: 12, fontSize: 13 }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>What you pay</div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <tbody>
-          {fees.map((fee) => (
-            <tr key={`${fee.kind}-${fee.label}`}>
-              <td style={{ padding: '3px 0', opacity: 0.85 }}>
-                {KIND_LABEL[fee.kind]}
-                {fee.bps !== null && ` (${(Number(fee.bps) / 100).toFixed(2)}%)`}
-              </td>
-              <td style={{ padding: '3px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                {formatUnits(fee.amount, decimals, 8)} {symbol}
-              </td>
-            </tr>
-          ))}
-          <tr style={{ borderTop: '1px solid #2a2a2a', fontWeight: 600 }}>
-            <td style={{ padding: '6px 0' }}>Total fees (excluding gas)</td>
-            <td style={{ padding: '6px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-              {formatUnits(total, decimals, 8)} {symbol}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div className="rounded-[10px] border border-ink-850 bg-ink-900/40 p-3.5">
+      <div className="text-[13px] font-semibold text-ink-200">What you pay</div>
+
+      <dl className="mt-3 grid gap-1.5">
+        {fees.map((fee) => (
+          <div
+            key={`${fee.kind}-${fee.label}`}
+            className="flex items-baseline justify-between gap-3"
+          >
+            <dt className="min-w-0 text-[12.5px] text-ink-500">
+              {KIND_LABEL[fee.kind]}
+              {fee.bps !== null && ` (${(Number(fee.bps) / 100).toFixed(2)}%)`}
+            </dt>
+            <dd className="m-0 shrink-0 font-mono text-[12.5px] tabular text-ink-300">
+              {formatUnits(fee.amount, decimals, 8)} {symbol}
+            </dd>
+          </div>
+        ))}
+
+        <div className="mt-1.5 flex items-baseline justify-between gap-3 border-t border-ink-850 pt-2.5">
+          <dt className="text-[12.5px] font-semibold text-ink-200">Total fees, excluding gas</dt>
+          <dd className="m-0 shrink-0 font-mono text-[13px] font-semibold tabular text-ink-100">
+            {formatUnits(total, decimals, 8)} {symbol}
+          </dd>
+        </div>
+      </dl>
 
       {hardCapBps !== undefined && (
-        <p style={{ margin: '10px 0 0', opacity: 0.7, fontSize: 12, lineHeight: 1.5 }}>
+        <p className="mt-3 text-[12px] leading-relaxed text-ink-500">
           The platform fee for this product can never exceed{' '}
-          <strong>{(hardCapBps / 100).toFixed(2)}%</strong>. That ceiling is compiled into the fee
-          contract and has no setter, so no operator action can raise it.
+          <strong className="text-ink-300">{(hardCapBps / 100).toFixed(2)}%</strong>. That ceiling
+          is compiled into the fee contract and has no setter, so no operator action can raise it.
         </p>
       )}
     </div>

@@ -47,6 +47,18 @@ export interface DexDeployment {
   readonly weth: `0x${string}`;
   /** Preferred for pool creation on this chain. Exactly one per chain should be true. */
   readonly isDefault: boolean;
+  /**
+   * The factory answers the two-argument `getPair(address,address)` / `createPair(address,address)`
+   * that `BondingCurve._createPair` and `Presale._seedPool` call, and its pool mints a fungible
+   * ERC-20 LP token.
+   *
+   * This is not a stylistic label. Aerodrome is a Velodrome-V2 fork whose factory only exposes
+   * `getPool(address,address,bool)` — the two-argument call reverts, verified against Base
+   * mainnet. A curve that graduated onto it would revert at the moment of graduation, with the
+   * entire raise sitting in the contract. `poolCreationDexes()` filters on this flag so an
+   * unusable venue can be listed for routing without ever being selected for pool creation.
+   */
+  readonly supportsV2PoolCreation: boolean;
 }
 
 export interface ChainConfig {
@@ -96,21 +108,26 @@ export const BASE: ChainConfig = {
   multicall3: MULTICALL3,
   blockTimeSeconds: 2,
   dexes: [
-    {
-      id: 'aerodrome',
-      kind: 'aerodrome',
-      router: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43',
-      factory: '0x420DD381b31aEf6683db6B902084cB0FFECe40Da',
-      weth: '0x4200000000000000000000000000000000000006',
-      isDefault: true,
-    },
+    // Uniswap V2 is the default on Base, not Aerodrome. Aerodrome has deeper liquidity, but its
+    // factory reverts on the two-argument `getPair` the contracts call and its pools do not mint
+    // a fungible LP token, so neither graduation nor the burn-the-LP guarantee can work there.
     {
       id: 'uniswap-v2',
       kind: 'uniswap-v2',
       router: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
       factory: '0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6',
       weth: '0x4200000000000000000000000000000000000006',
+      isDefault: true,
+      supportsV2PoolCreation: true,
+    },
+    {
+      id: 'aerodrome',
+      kind: 'aerodrome',
+      router: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43',
+      factory: '0x420DD381b31aEf6683db6B902084cB0FFECe40Da',
+      weth: '0x4200000000000000000000000000000000000006',
       isDefault: false,
+      supportsV2PoolCreation: false,
     },
   ],
 };
@@ -134,6 +151,7 @@ export const BNB_CHAIN: ChainConfig = {
       factory: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
       weth: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
       isDefault: true,
+      supportsV2PoolCreation: true,
     },
   ],
 };
@@ -161,6 +179,7 @@ export const BASE_SEPOLIA: ChainConfig = {
       factory: '0x7Ae58f10f7849cA6F5fB71b7f45CB416c9204b1e',
       weth: '0x4200000000000000000000000000000000000006',
       isDefault: true,
+      supportsV2PoolCreation: true,
     },
   ],
 };
@@ -184,6 +203,7 @@ export const BSC_TESTNET: ChainConfig = {
       factory: '0x6725F303b657a9451d8BA641348b6761A6CC7a17',
       weth: '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd',
       isDefault: true,
+      supportsV2PoolCreation: true,
     },
   ],
 };
@@ -215,12 +235,29 @@ export function hasChain(id: Caip2): boolean {
   return BY_ID.has(id);
 }
 
-/** The DEX a new pool should be created on for this chain. */
+/**
+ * The DEX a new pool should be created on for this chain.
+ *
+ * Only ever returns a venue that can actually serve the graduation path. The previous fallback to
+ * `dexes[0]` would hand back whichever venue happened to be listed first — which on Base was
+ * Aerodrome, where every graduation would have reverted. Failing loudly here is strictly better
+ * than returning an address that reverts at the one moment a launch's whole raise is in flight.
+ */
 export function defaultDex(id: Caip2): DexDeployment {
   const chain = getChain(id);
-  const dex = chain.dexes.find((d) => d.isDefault) ?? chain.dexes[0];
-  if (!dex) throw new ChainRegistryError(`chain "${id}" has no DEX configured`);
+  const usable = chain.dexes.filter((d) => d.supportsV2PoolCreation);
+  const dex = usable.find((d) => d.isDefault) ?? usable[0];
+  if (!dex) {
+    throw new ChainRegistryError(
+      `chain "${id}" has no DEX that supports the V2 pool-creation path the contracts require`,
+    );
+  }
   return dex;
+}
+
+/** Every venue on this chain a pool may be created on. Routing may use more than these. */
+export function poolCreationDexes(id: Caip2): readonly DexDeployment[] {
+  return getChain(id).dexes.filter((d) => d.supportsV2PoolCreation);
 }
 
 export function getDex(id: Caip2, dexId: string): DexDeployment {

@@ -1,6 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "outDir": "dist", "rootDir": "src" },
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    // Every adapter here talks to an HTTP API using web-standard globals: fetch, RequestInit,
+    // AbortController, URL, Blob and the timer functions. All are present in the three runtimes
+    // this package targets (browser, Cloudflare Workers, Node 18+), but none are in the ES2023
+    // lib. TypeScript 5 resolved them from an ambient @types global that happened to be visible;
+    // TypeScript 7 does not, and it is right not to - a package should declare what it uses.
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]
 }

@@ -8,7 +8,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -79,6 +79,10 @@ function run(cmd, args, options = {}) {
 
 /** Deploy the ecosystem and return the address manifest. */
 export async function deployEcosystem(rpcUrl) {
+  // `vm.writeFile` in DeployLocal.s.sol writes the manifest here but will not create the
+  // directory, and the directory is build output that a fresh clone may not have.
+  mkdirSync(join(CONTRACTS, 'artifacts'), { recursive: true });
+
   await run(
     foundryBin('forge'),
     [

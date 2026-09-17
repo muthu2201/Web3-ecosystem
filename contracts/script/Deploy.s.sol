@@ -39,7 +39,7 @@ import {console} from "forge-std/console.sol";
 contract Deploy is Script {
     struct Config {
         address safe; // owner and treasury: a Safe multisig
-        address dexRouter; // Uniswap V2 / PancakeSwap V2 / Aerodrome router
+        address dexRouter; // Uniswap V2 or PancakeSwap V2 router ONLY - see IUniswapV2.sol
         uint256 flatNativeHardCap; // per-chain ceiling for flat fees
         uint64 timelockDelay;
     }

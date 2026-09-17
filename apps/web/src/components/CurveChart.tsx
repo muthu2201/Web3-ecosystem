@@ -11,7 +11,21 @@
  */
 
 import { sampleCurve } from '@web3eco/core';
+import type { JSX } from 'react';
 import { useEffect, useRef } from 'react';
+
+/**
+ * Read a design token's computed value.
+ *
+ * The canvas cannot use CSS variables directly, so the accent colour is pulled from the same
+ * custom property the rest of the interface uses. Hard-coding a hex here would mean the chart
+ * silently drifts away from the palette the next time it changes.
+ */
+function token(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value === '' ? fallback : value;
+}
 
 export interface CurveChartProps {
   readonly virtualNativeStart: bigint;
@@ -69,17 +83,19 @@ export function CurveChart({
     ctx.lineTo(x(points.length - 1), padding + plotHeight);
     ctx.lineTo(x(0), padding + plotHeight);
     ctx.closePath();
+    const accent = token('--color-flux-500', 'oklch(0.72 0.16 195)');
     const gradient = ctx.createLinearGradient(0, padding, 0, padding + plotHeight);
-    gradient.addColorStop(0, 'rgba(59,130,246,0.32)');
-    gradient.addColorStop(1, 'rgba(59,130,246,0.02)');
+    gradient.addColorStop(0, `color-mix(in oklch, ${accent} 34%, transparent)`);
+    gradient.addColorStop(1, `color-mix(in oklch, ${accent} 2%, transparent)`);
     ctx.fillStyle = gradient;
     ctx.fill();
 
     // The curve itself.
     ctx.beginPath();
     prices.forEach((price, i) => (i === 0 ? ctx.moveTo(x(i), y(price)) : ctx.lineTo(x(i), y(price))));
-    ctx.strokeStyle = '#3b82f6';
+    ctx.strokeStyle = accent;
     ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
     ctx.stroke();
 
     // Progress marker at the current position along the curve.
@@ -92,12 +108,20 @@ export function CurveChart({
       ctx.beginPath();
       ctx.moveTo(markerX, padding);
       ctx.lineTo(markerX, padding + plotHeight);
-      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
       ctx.lineWidth = 1;
+      ctx.setLineDash([3, 4]);
       ctx.stroke();
+      ctx.setLineDash([]);
+
+      // A halo under the dot so it stays readable wherever it lands on the filled area.
+      ctx.beginPath();
+      ctx.arc(markerX, markerY, 7, 0, Math.PI * 2);
+      ctx.fillStyle = `color-mix(in oklch, ${accent} 30%, transparent)`;
+      ctx.fill();
 
       ctx.beginPath();
-      ctx.arc(markerX, markerY, 4, 0, Math.PI * 2);
+      ctx.arc(markerX, markerY, 3.5, 0, Math.PI * 2);
       ctx.fillStyle = '#fff';
       ctx.fill();
     }
@@ -106,11 +130,19 @@ export function CurveChart({
   const progressBps = curveSupply > 0n ? Number((tokensSold * 10_000n) / curveSupply) : 0;
 
   return (
-    <div>
-      <canvas ref={canvasRef} style={{ width: '100%', height }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: 0.7 }}>
+    <div className="min-w-0">
+      <canvas
+        ref={canvasRef}
+        className="block w-full"
+        style={{ height }}
+        role="img"
+        aria-label={`Bonding curve price, ${(progressBps / 100).toFixed(2)}% of the way to graduation`}
+      />
+      <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2 text-[12px] text-ink-500">
         <span>Price rises as supply is bought</span>
-        <span>{(progressBps / 100).toFixed(2)}% to graduation</span>
+        <span className="font-mono tabular text-ink-400">
+          {(progressBps / 100).toFixed(2)}% to graduation
+        </span>
       </div>
     </div>
   );
