@@ -12,7 +12,7 @@ than to an aggregator, and live curve pricing is computed client-side rather tha
 | Area | State |
 |---|---|
 | Contracts | 18 contracts, 185 tests (unit, fuzz, stateful invariant), Slither clean at high and medium |
-| TypeScript | 6 packages and apps, 260 tests including differential tests against the Solidity |
+| TypeScript | 5 packages and 3 apps, 300 tests including differential tests against the Solidity |
 | Stress test | 401 transactions, 110M gas, 432 invariant checks, zero violations |
 | Audit | **None.** See [SECURITY.md](SECURITY.md) |
 
@@ -141,6 +141,8 @@ Scale it with `STRESS_CURVES`, `STRESS_TRADES`, `STRESS_PRESALES`, `STRESS_NFT_M
 
 ## Deployment
 
+The full runbook is [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The shape of it:
+
 **Run the preflight first.** It reads the live chain and refuses a target the contracts cannot
 work with. This is not ceremony: `main` briefly carried a registry that named Aerodrome as Base's
 DEX, and because the contracts call a two-argument `getPair(address,address)` that Solidly forks
@@ -149,18 +151,10 @@ moment a launch's whole raise was sitting in the contract. No test could catch i
 tests run against a mock DEX that answers correctly. The preflight catches it in one read.
 
 ```bash
-RPC_URL=<rpc> EXPECTED_CHAIN_ID=<id> DEPLOYER=0x<your address> \
-SAFE_ADDRESS=0x<safe> DEX_ROUTER=0x<v2 router> \
+RPC_URL=<rpc> EXPECTED_CHAIN_ID=<id> DEPLOYER=0x<gas payer> \
+SAFE_ADDRESS=0x<owner> DEX_ROUTER=0x<v2 router> \
   node scripts/preflight-deploy.mjs
 ```
-
-It checks chain identity, that the deployer can actually pay for ~25M gas, that the owner is a
-contract rather than a lone key, and that the router and its factory answer the exact calls the
-contracts make. It only ever reads; it never signs.
-
-**Test on BSC Testnet.** Every Sepolia faucet now gates on holding a mainnet balance, which makes
-a cold wallet unable to start. BNB testnet still has faucets that drip to a brand-new address, so
-that is the rehearsal chain. A full deploy there costs 0.0025 tBNB against a 0.1 tBNB drip.
 
 Verified routers, each confirmed against the live chain:
 
@@ -174,22 +168,36 @@ Verified routers, each confirmed against the live chain:
 Aerodrome is deliberately absent. It has deeper liquidity on Base and the registry still lists it
 for routing, but it cannot serve pool creation — see `supportsV2PoolCreation` in the registry.
 
-Then deploy. `PRIVATE_KEY` is read from your own environment and never leaves your machine:
+**Then build the plan, verify it against a fork of the real chain, and broadcast.** Deployment does
+not use `forge script`, because that needs a raw private key and the owner key belongs only in the
+operator's wallet. Instead every contract is placed through the canonical CREATE2 deployer, which
+turns a contract creation into an ordinary call any wallet can send:
 
 ```bash
-cd contracts
-SAFE_ADDRESS=0x... DEX_ROUTER=0x... forge script script/Deploy.s.sol \
-  --rpc-url <url> --broadcast --verify
+SAFE_ADDRESS=0x… DEX_ROUTER=0x… node scripts/plan-create2-deploy.mjs
+SAFE_ADDRESS=0x… DEX_ROUTER=0x… FORK_RPC_URL=<real chain> node scripts/verify-create2-deploy.mjs
+RPC_URL=… DEPLOYER_KEY_FILE=… SAFE_ADDRESS=0x… DEX_ROUTER=0x… \
+  node scripts/broadcast-create2-deploy.mjs
 ```
 
-Then, from the Safe:
+The verification replays byte-for-byte the calldata that will be broadcast, against a fork of the
+target chain, and asserts the resulting state — owners, immutables, fees at zero, implementations
+sealed, bindings taken and no longer re-callable — then deploys a token, launches a curve and buys
+on it. Anything that would revert on-chain reverts there first, for free.
+
+The account that pays for those 17 deployments receives **no authority whatsoever**: every owner,
+treasury and admin arrives as a constructor argument. It can be a throwaway holding a few cents.
+
+**Then, from the owner wallet**, three one-way bindings:
 
 1. `curveFactory.setCurveImplementation(...)` and `presaleFactory.setPresaleImplementation(...)`
 2. `tokenFactory.bindDeployers(...)`
-3. `feeRouter.proposeFeeConfig(...)` per product, then `executeFeeConfig` after the timelock
+
+and later, when fees are wanted, `feeRouter.proposeFeeConfig(...)` per product followed by
+`executeFeeConfig` after the timelock.
 
 Every binding is one-way. **All fees start at zero** — a freshly deployed ecosystem charges
-nothing until a multisig has explicitly, publicly and with notice turned them on.
+nothing until the owner has explicitly, publicly and with notice turned them on.
 
 ## Testing approach
 
@@ -229,6 +237,12 @@ the stress harness rather than estimated:
 | Graduate to a DEX pool | $1.40 | **$0.0162** | $0.0399 |
 | Mint an NFT | $0.15 | **$0.0018** | $0.0044 |
 
+Those per-operation figures were taken at one moment; L2 base fees move hour to hour, so treat
+them as an order of magnitude rather than a quote. The full-deployment row was remeasured on
+17 September against 31,516,881 gas and live prices — **$0.54 on Base, $1.15 on BNB Chain, $12.78
+on Ethereum.** The current per-chain table lives in [docs/CHAINS.md](docs/CHAINS.md), which is the
+one to trust when they disagree.
+
 That snapshot *flatters* Ethereum: it was taken at 0.52 gwei, which is unusually cheap. At a more
 typical 30 gwei the deploy is roughly $1,840 and a curve launch roughly $118.
 
@@ -244,11 +258,10 @@ before it ships.
 
 ## Branches and dependencies
 
-Two branches, permanently:
-
-- `main` — the stable line. Complete and releasable: contracts, SDK, workers, web app, and the
-  full test suite. Nothing merges here that CI has not proven green.
-- `develop` — where work lands before it is merged to `main`.
+**One branch, `main`.** An earlier attempt at a second branch for tests and features produced
+exactly the merge conflicts it was meant to avoid. `main` is the stable line — contracts, SDK,
+workers, web app and the full test suite — and CI is the gate. Nothing lands that CI has not
+proven green.
 
 Tests live on `main` alongside the code they test, because a branch whose tests were removed is
 a branch nothing can verify. What is kept out of production code is *mocks*, and that is enforced
@@ -260,7 +273,7 @@ exemption itself. CI runs the check before it runs anything else.
 **Dependabot is deliberately not enabled.** There is no `.github/dependabot.yml`, and adding one
 is what would switch version-update PRs on. Dependencies here are upgraded deliberately and in
 one batch, because an upgrade to this repository has to clear the whole gate — production
-isolation, a frozen-lockfile install, 13 typecheck targets, 8 build targets, 292 TypeScript
+isolation, a frozen-lockfile install, 13 typecheck targets, 8 build targets, 300 TypeScript
 tests, 185 contract tests, `forge fmt`, and a responsive re-audit of all 13 routes. A stream of
 single-dependency bot PRs cannot clear that gate individually and would either sit unmerged or
 get waved through, which is worse than not having them. Dependabot *security alerts* are a
