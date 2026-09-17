@@ -10,6 +10,9 @@ import {BondingCurve} from "../src/launch/BondingCurve.sol";
 import {BondingCurveFactory} from "../src/launch/BondingCurveFactory.sol";
 import {Presale} from "../src/launch/Presale.sol";
 import {PresaleFactory} from "../src/launch/PresaleFactory.sol";
+import {NftCollection} from "../src/nft/NftCollection.sol";
+import {NftFactory} from "../src/nft/NftFactory.sol";
+import {NftMarketplace} from "../src/nft/NftMarketplace.sol";
 import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {MockUniswapV2Factory, MockUniswapV2Router02, MockWETH} from "./mocks/UniswapV2.sol";
@@ -29,6 +32,8 @@ abstract contract Fixture is Test {
     PresaleFactory internal presaleFactory;
     TokenVesting internal vesting;
     MerkleDistributor internal distributor;
+    NftFactory internal nftFactory;
+    NftMarketplace internal marketplace;
 
     MockWETH internal weth;
     MockUniswapV2Factory internal dexFactory;
@@ -81,6 +86,8 @@ abstract contract Fixture is Test {
 
         vesting = new TokenVesting();
         distributor = new MerkleDistributor();
+        nftFactory = new NftFactory(owner, feeRouter);
+        marketplace = new NftMarketplace(feeRouter);
 
         _configureFees();
 
@@ -145,3 +152,16 @@ abstract contract Fixture is Test {
         return (BondingCurve(payable(c)), t);
     }
 }
+
+/// @dev TESTING NOTE - capturing timestamps under `via_ir`.
+///
+/// Do NOT write `uint256 t = block.timestamp;` and then use `t` across a `vm.warp`. With
+/// `via_ir = true` the optimiser rematerialises `block.timestamp` at each use rather than
+/// materialising a copy, because within a real transaction the timestamp genuinely cannot
+/// change - the optimiser is right about the EVM and `vm.warp` is the thing breaking the rule.
+/// The result is that `t` silently tracks the warped value, so `vm.warp(t + 90 days)` followed
+/// by `vm.warp(t + 180 days)` lands 270 days out instead of 180, and any time-dependent
+/// assertion in between quietly tests the wrong instant.
+///
+/// Use `vm.getBlockTimestamp()` instead. It is an external cheatcode call, so the optimiser
+/// cannot fold it, and the captured value stays put.

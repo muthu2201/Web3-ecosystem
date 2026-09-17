@@ -66,6 +66,9 @@ contract PresaleTest is Fixture {
         Presale sale = _create(p);
 
         uint256 owedAtHardCap = (HARD_CAP * RATE) / 1e18;
+        // Deliberately mirrors `Presale._tokensNeeded` step for step, including its intermediate
+        // truncation. Reordering for precision here would stop this matching the contract.
+        // forge-lint: disable-next-line(divide-before-multiply)
         uint256 forPool = ((HARD_CAP * 6_000 / 10_000) * LP_RATE) / 1e18;
         assertEq(saleToken.balanceOf(address(sale)), owedAtHardCap + forPool);
     }

@@ -217,6 +217,13 @@ contract TokenVesting is ReentrancyGuard {
     // ---------------------------------------------------------------------
 
     function _vestedAmount(Schedule storage s) private view returns (uint256) {
+        // Once revoked, the grant is frozen at exactly what had already vested: `revoke` shrank
+        // `totalAmount` to that figure, and it is fully vested by definition. Without this branch
+        // the linear formula would be re-applied to the shrunken total, retroactively un-vesting
+        // tokens the beneficiary already owned - the exact clawback this contract promises not to
+        // allow. Caught by testFuzz_RevokeNeverClawsBackVestedTokens.
+        if (s.revoked) return s.totalAmount;
+
         uint64 cliffEnd = s.start + s.cliffDuration;
         if (block.timestamp < cliffEnd) return 0;
 
