@@ -159,7 +159,7 @@ contract DistributionTest is Fixture {
 
     function test_NothingVestsBeforeTheCliff() public {
         uint256 id = _schedule(1000e18, 90 days, 360 days, false);
-        vm.warp(block.timestamp + 89 days);
+        vm.warp(vm.getBlockTimestamp() + 89 days);
         assertEq(vesting.releasable(id), 0);
 
         vm.prank(alice);
@@ -382,7 +382,7 @@ contract DistributionTest is Fixture {
         vm.expectRevert();
         distributor.sweep(id, creator);
 
-        vm.warp(block.timestamp + 31 days);
+        vm.warp(vm.getBlockTimestamp() + 31 days);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(MerkleDistributor.NotFunder.selector, alice));
         distributor.sweep(id, alice);
@@ -401,7 +401,7 @@ contract DistributionTest is Fixture {
             distributor.createDistribution(address(token), root, 300e18, 0, uint64(block.timestamp + 30 days));
         vm.stopPrank();
 
-        vm.warp(block.timestamp + 31 days);
+        vm.warp(vm.getBlockTimestamp() + 31 days);
         bytes32[] memory proofA = new bytes32[](1);
         proofA[0] = leafB;
         vm.prank(alice);

@@ -12,6 +12,14 @@ import {PresaleFactory} from "../src/launch/PresaleFactory.sol";
 import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {NftFactory} from "../src/nft/NftFactory.sol";
 import {NftMarketplace} from "../src/nft/NftMarketplace.sol";
+import {
+    ComplianceTokenDeployer,
+    GovernanceTokenDeployer,
+    MintableTokenDeployer,
+    PausableTokenDeployer,
+    StandardTokenDeployer,
+    TaxTokenDeployer
+} from "../src/tokens/deployers/TokenDeployers.sol";
 import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -93,11 +101,21 @@ contract Deploy is Script {
             new Presale(address(d.presaleFactory), d.feeRouter, IUniswapV2Router02(cfg.dexRouter), d.locker);
     }
 
-    /// @notice Bind the implementations. Separate from `_deploy` because on a live chain this is
-    ///         executed by the Safe, not by the deployer key.
+    /// @notice Bind the implementations and token deployers. Separate from `_deploy` because on a
+    ///         live chain these are executed by the Safe, not by the deployer key.
+    /// @dev Every binding here is one-way. Once set, no owner action can change the code a future
+    ///      launch or token deployment runs on.
     function bindImplementations(Deployment memory d) external {
         d.curveFactory.setCurveImplementation(address(d.curveImplementation));
         d.presaleFactory.setPresaleImplementation(address(d.presaleImplementation));
+        d.tokenFactory.bindDeployers(
+            new StandardTokenDeployer(address(d.tokenFactory)),
+            new MintableTokenDeployer(address(d.tokenFactory)),
+            new PausableTokenDeployer(address(d.tokenFactory)),
+            new GovernanceTokenDeployer(address(d.tokenFactory)),
+            new TaxTokenDeployer(address(d.tokenFactory)),
+            new ComplianceTokenDeployer(address(d.tokenFactory))
+        );
     }
 
     /// @notice Launch parameters for new curves.
@@ -134,7 +152,7 @@ contract Deploy is Script {
         console.log("NftMarketplace      ", address(d.marketplace));
         console.log("");
         console.log("NEXT STEPS (all from the Safe):");
-        console.log("1. curveFactory.setCurveImplementation(...)");
+        console.log("1. curveFactory.setCurveImplementation(...) and tokenFactory.bindDeployers(...)");
         console.log("2. presaleFactory.setPresaleImplementation(...)");
         console.log("3. feeRouter.proposeFeeConfig(...) for each product, then execute after the timelock");
         console.log("All fees are ZERO until step 3 completes.");

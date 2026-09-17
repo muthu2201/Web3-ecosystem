@@ -125,7 +125,7 @@ contract NftTest is Fixture {
         vm.expectRevert();
         collection.mint{value: PRICE}(id, 1, new bytes32[](0));
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(alice);
         collection.mint{value: PRICE}(id, 1, new bytes32[](0));
         assertEq(collection.balanceOf(alice), 1);

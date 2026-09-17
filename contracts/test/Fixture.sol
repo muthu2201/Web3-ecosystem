@@ -13,6 +13,14 @@ import {PresaleFactory} from "../src/launch/PresaleFactory.sol";
 import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {NftFactory} from "../src/nft/NftFactory.sol";
 import {NftMarketplace} from "../src/nft/NftMarketplace.sol";
+import {
+    ComplianceTokenDeployer,
+    GovernanceTokenDeployer,
+    MintableTokenDeployer,
+    PausableTokenDeployer,
+    StandardTokenDeployer,
+    TaxTokenDeployer
+} from "../src/tokens/deployers/TokenDeployers.sol";
 import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {MockUniswapV2Factory, MockUniswapV2Router02, MockWETH} from "./mocks/UniswapV2.sol";
 import {Test} from "forge-std/Test.sol";
@@ -64,6 +72,7 @@ abstract contract Fixture is Test {
 
         feeRouter = new FeeRouter(owner, treasury, FLAT_CAP, TIMELOCK);
         tokenFactory = new TokenFactory(owner, feeRouter);
+        _bindTokenDeployers();
         locker = new LiquidityLocker();
 
         // The factory and the curve implementation each need the other's address. The factory
@@ -90,6 +99,24 @@ abstract contract Fixture is Test {
         vm.deal(alice, 1000 ether);
         vm.deal(bob, 1000 ether);
         vm.deal(carol, 1000 ether);
+    }
+
+    /// @dev Each template lives behind its own deployer so the factory stays under EIP-170. The
+    ///      deployers are locked to this factory and bound to it exactly once.
+    ///
+    ///      The deployers are constructed into locals BEFORE the prank. Constructing them inside
+    ///      the argument list would run six CREATEs first, consuming the pending `vm.prank`, and
+    ///      `bindDeployers` would then be called by the test contract instead of the owner.
+    function _bindTokenDeployers() internal {
+        StandardTokenDeployer standard = new StandardTokenDeployer(address(tokenFactory));
+        MintableTokenDeployer mintable = new MintableTokenDeployer(address(tokenFactory));
+        PausableTokenDeployer pausable = new PausableTokenDeployer(address(tokenFactory));
+        GovernanceTokenDeployer governance = new GovernanceTokenDeployer(address(tokenFactory));
+        TaxTokenDeployer tax = new TaxTokenDeployer(address(tokenFactory));
+        ComplianceTokenDeployer compliance = new ComplianceTokenDeployer(address(tokenFactory));
+
+        vm.prank(owner);
+        tokenFactory.bindDeployers(standard, mintable, pausable, governance, tax, compliance);
     }
 
     function _defaultCurveConfig() internal pure returns (BondingCurveFactory.CurveConfig memory) {
@@ -122,7 +149,8 @@ abstract contract Fixture is Test {
             p, IFeeRouter.FeeConfig({bps: bps, creatorShareBps: creatorShareBps, flatNative: flat})
         );
         vm.stopPrank();
-        vm.warp(block.timestamp + TIMELOCK);
+        // vm.getBlockTimestamp(), not block.timestamp: see the via_ir note at the end of this file.
+        vm.warp(vm.getBlockTimestamp() + TIMELOCK);
         vm.prank(owner);
         feeRouter.executeFeeConfig(p);
     }

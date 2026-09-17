@@ -2,12 +2,14 @@
 pragma solidity 0.8.30;
 
 import {IFeeRouter} from "../fees/IFeeRouter.sol";
-import {ComplianceToken} from "./ComplianceToken.sol";
-import {GovernanceToken} from "./GovernanceToken.sol";
-import {MintableToken} from "./MintableToken.sol";
-import {PausableToken} from "./PausableToken.sol";
-import {StandardToken} from "./StandardToken.sol";
-import {TaxToken} from "./TaxToken.sol";
+import {
+    ComplianceTokenDeployer,
+    GovernanceTokenDeployer,
+    MintableTokenDeployer,
+    PausableTokenDeployer,
+    StandardTokenDeployer,
+    TaxTokenDeployer
+} from "./deployers/TokenDeployers.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
@@ -30,6 +32,15 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 ///      had computed and deploy different bytecode there first. Mixing the caller in makes each
 ///      deployer's address space disjoint while keeping addresses reproducible across chains for
 ///      the same (deployer, salt) pair.
+///
+/// @dev CODE SIZE. Writing `new StandardToken(...)` embeds that template's entire creation
+///      bytecode into this contract. Doing that for all six templates produced a 59,318-byte
+///      contract - more than double the EIP-170 limit, and undeployable anywhere. Each template
+///      therefore lives behind its own small deployer contract, bound to this factory and to
+///      nothing else, and this contract holds only routing and registry logic.
+///
+///      Because CREATE2 now originates from the per-template deployer rather than from here,
+///      anyone predicting a token address must use `deployerFor(template)` as the CREATE2 origin.
 contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     /// @notice Audited templates this factory can deploy. Append only, never reorder.
     enum Template {
@@ -50,6 +61,19 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     /// @notice Fee router that receives the flat deployment fee.
     IFeeRouter public immutable feeRouter;
 
+    /// @dev Per-template deployers. Bound once, then frozen - the set of templates this factory
+    ///      can produce is fixed for its lifetime. A mutable pointer here would let a future
+    ///      owner change the code every later token is built from, which is exactly the
+    ///      supply-chain power the platform promises not to hold.
+    StandardTokenDeployer public standardDeployer;
+    MintableTokenDeployer public mintableDeployer;
+    PausableTokenDeployer public pausableDeployer;
+    GovernanceTokenDeployer public governanceDeployer;
+    TaxTokenDeployer public taxDeployer;
+    ComplianceTokenDeployer public complianceDeployer;
+
+    bool public deployersBound;
+
     mapping(address token => Deployment) private _deploymentOf;
     mapping(address deployer => address[] tokens) private _tokensByDeployer;
     address[] private _allTokens;
@@ -64,14 +88,78 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 feePaid
     );
 
+    event DeployersBound(
+        address standard,
+        address mintable,
+        address pausable,
+        address governance,
+        address tax,
+        address compliance
+    );
+
     error InsufficientFee(uint256 provided, uint256 required);
     error RefundFailed();
     error ZeroAddress();
     error UnknownToken(address token);
+    error DeployersAlreadyBound();
+    error DeployersNotBound();
 
     constructor(address initialOwner, IFeeRouter feeRouter_) Ownable(initialOwner) {
         if (address(feeRouter_) == address(0)) revert ZeroAddress();
         feeRouter = feeRouter_;
+    }
+
+    /// @notice Bind the six template deployers. Callable once, by the owner, then frozen forever.
+    /// @dev Each deployer must already name this factory as its own `factory`, which is verified
+    ///      here rather than trusted - binding a deployer locked to a different factory would
+    ///      make every deployment through it revert.
+    function bindDeployers(
+        StandardTokenDeployer standard,
+        MintableTokenDeployer mintable,
+        PausableTokenDeployer pausable,
+        GovernanceTokenDeployer governance,
+        TaxTokenDeployer tax,
+        ComplianceTokenDeployer compliance
+    ) external onlyOwner {
+        if (deployersBound) revert DeployersAlreadyBound();
+        _requireBoundToThis(standard.factory());
+        _requireBoundToThis(mintable.factory());
+        _requireBoundToThis(pausable.factory());
+        _requireBoundToThis(governance.factory());
+        _requireBoundToThis(tax.factory());
+        _requireBoundToThis(compliance.factory());
+
+        standardDeployer = standard;
+        mintableDeployer = mintable;
+        pausableDeployer = pausable;
+        governanceDeployer = governance;
+        taxDeployer = tax;
+        complianceDeployer = compliance;
+        deployersBound = true;
+
+        emit DeployersBound(
+            address(standard),
+            address(mintable),
+            address(pausable),
+            address(governance),
+            address(tax),
+            address(compliance)
+        );
+    }
+
+    function _requireBoundToThis(address claimed) private view {
+        if (claimed != address(this)) revert ZeroAddress();
+    }
+
+    /// @notice CREATE2 origin for `template`. Address prediction must use this, not the factory.
+    function deployerFor(Template template) public view returns (address) {
+        if (!deployersBound) revert DeployersNotBound();
+        if (template == Template.Standard) return address(standardDeployer);
+        if (template == Template.Mintable) return address(mintableDeployer);
+        if (template == Template.Pausable_) return address(pausableDeployer);
+        if (template == Template.Governance) return address(governanceDeployer);
+        if (template == Template.Tax) return address(taxDeployer);
+        return address(complianceDeployer);
     }
 
     // ---------------------------------------------------------------------
@@ -131,8 +219,9 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         nonReentrant
         returns (address token)
     {
+        if (!deployersBound) revert DeployersNotBound();
         uint256 fee = _collectFee();
-        token = address(new StandardToken{salt: _salt(p.salt)}(p.name, p.symbol, p.supply, p.recipient, msg.sender));
+        token = standardDeployer.deploy(_salt(p.salt), p.name, p.symbol, p.supply, p.recipient, msg.sender);
         _register(token, Template.Standard, p.name, p.symbol, p.supply, fee);
     }
 
@@ -144,9 +233,10 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         nonReentrant
         returns (address token)
     {
+        if (!deployersBound) revert DeployersNotBound();
         uint256 fee = _collectFee();
-        token = address(
-            new MintableToken{salt: _salt(p.salt)}(p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin)
+        token = mintableDeployer.deploy(
+            _salt(p.salt), p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin
         );
         _register(token, Template.Mintable, p.name, p.symbol, p.initialSupply, fee);
     }
@@ -159,8 +249,9 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         nonReentrant
         returns (address token)
     {
+        if (!deployersBound) revert DeployersNotBound();
         uint256 fee = _collectFee();
-        token = address(new PausableToken{salt: _salt(p.salt)}(p.name, p.symbol, p.supply, p.recipient, admin));
+        token = pausableDeployer.deploy(_salt(p.salt), p.name, p.symbol, p.supply, p.recipient, admin);
         _register(token, Template.Pausable_, p.name, p.symbol, p.supply, fee);
     }
 
@@ -172,9 +263,10 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         nonReentrant
         returns (address token)
     {
+        if (!deployersBound) revert DeployersNotBound();
         uint256 fee = _collectFee();
-        token = address(
-            new GovernanceToken{salt: _salt(p.salt)}(p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin)
+        token = governanceDeployer.deploy(
+            _salt(p.salt), p.name, p.symbol, p.cap, p.initialSupply, p.recipient, p.admin
         );
         _register(token, Template.Governance, p.name, p.symbol, p.initialSupply, fee);
     }
@@ -182,19 +274,21 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     /// @notice Deploy a token with a monotonically non-increasing buy/sell tax.
     /// @dev Limited routability: pair only into v2-style pools. See `TaxToken`.
     function deployTax(TaxParams calldata p) external payable whenNotPaused nonReentrant returns (address token) {
+        if (!deployersBound) revert DeployersNotBound();
         uint256 fee = _collectFee();
-        token = address(
-            new TaxToken{salt: _salt(p.salt)}(
-                p.name,
-                p.symbol,
-                p.supply,
-                p.recipient,
-                p.owner,
-                p.taxRecipient,
-                p.maxTaxBps,
-                p.buyTaxBps,
-                p.sellTaxBps
-            )
+        token = taxDeployer.deploy(
+            _salt(p.salt),
+            TaxTokenDeployer.Args({
+                name: p.name,
+                symbol: p.symbol,
+                supply: p.supply,
+                recipient: p.recipient,
+                owner: p.owner,
+                taxRecipient: p.taxRecipient,
+                maxTaxBps: p.maxTaxBps,
+                buyTaxBps: p.buyTaxBps,
+                sellTaxBps: p.sellTaxBps
+            })
         );
         _register(token, Template.Tax, p.name, p.symbol, p.supply, fee);
     }
@@ -208,11 +302,10 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
         nonReentrant
         returns (address token)
     {
+        if (!deployersBound) revert DeployersNotBound();
         uint256 fee = _collectFee();
-        token = address(
-            new ComplianceToken{salt: _salt(p.salt)}(
-                p.name, p.symbol, p.supply, p.recipient, p.admin, p.allowlistEnabled
-            )
+        token = complianceDeployer.deploy(
+            _salt(p.salt), p.name, p.symbol, p.supply, p.recipient, p.admin, p.allowlistEnabled
         );
         _register(token, Template.Compliance, p.name, p.symbol, p.supply, fee);
     }
@@ -231,9 +324,20 @@ contract TokenFactory is Ownable2Step, Pausable, ReentrancyGuard {
     /// @dev The SDK derives `initCodeHash` from the compiled artifact, so the UI can show the
     ///      final token address before the user signs, and prove the same address is reachable on
     ///      every EVM chain with identical CREATE2 semantics.
-    function computeAddress(address deployer, bytes32 userSalt, bytes32 initCodeHash) public view returns (address) {
+    /// @param template Which template will be deployed; this selects the CREATE2 origin.
+    /// @param deployer The account that will call the factory.
+    /// @param initCodeHash keccak256(creationCode ++ abi.encode(constructorArgs)) for the template.
+    /// @dev The CREATE2 origin is the template's deployer contract, not this factory, because
+    ///      that is the contract which executes the CREATE2.
+    function computeAddress(Template template, address deployer, bytes32 userSalt, bytes32 initCodeHash)
+        public
+        view
+        returns (address)
+    {
         bytes32 salt = effectiveSalt(deployer, userSalt);
-        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
+        return address(
+            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), deployerFor(template), salt, initCodeHash))))
+        );
     }
 
     // ---------------------------------------------------------------------

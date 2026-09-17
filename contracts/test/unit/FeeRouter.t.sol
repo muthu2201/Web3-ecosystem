@@ -29,7 +29,7 @@ contract FeeRouterTest is Test {
         router.proposeFeeConfig(
             p, IFeeRouter.FeeConfig({bps: bps, creatorShareBps: creatorShareBps, flatNative: flat})
         );
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(vm.getBlockTimestamp() + DELAY);
         router.executeFeeConfig(p);
         vm.stopPrank();
     }
@@ -131,7 +131,7 @@ contract FeeRouterTest is Test {
             IFeeRouter.Product.Swap, IFeeRouter.FeeConfig({bps: 25, creatorShareBps: 0, flatNative: 0})
         );
         router.cancelFeeConfig(IFeeRouter.Product.Swap);
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(vm.getBlockTimestamp() + DELAY);
         vm.expectRevert(IFeeRouter.NoPendingProposal.selector);
         router.executeFeeConfig(IFeeRouter.Product.Swap);
         vm.stopPrank();
@@ -173,7 +173,7 @@ contract FeeRouterTest is Test {
         router.proposeTreasury(newTreasury);
         vm.expectRevert();
         router.executeTreasury();
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(vm.getBlockTimestamp() + DELAY);
         router.executeTreasury();
         vm.stopPrank();
         assertEq(router.treasury(), newTreasury);

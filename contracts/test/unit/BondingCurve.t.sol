@@ -110,7 +110,7 @@ contract BondingCurveTest is Fixture {
     ///      means either it is holding money it has not accounted for, or it has promised money
     ///      it does not hold.
     function testFuzz_BalanceAlwaysEqualsTrackedReserve(uint96 a, uint96 b, uint96 c) public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         uint256[3] memory amounts = [bound(a, 1e12, 1 ether), bound(b, 1e12, 1 ether), bound(c, 1e12, 1 ether)];
         address[3] memory buyers = [alice, bob, carol];
 
@@ -132,7 +132,7 @@ contract BondingCurveTest is Fixture {
 
     /// @dev Virtual native reserve must stay exactly one starting-offset above the real reserve.
     function testFuzz_VirtualReserveTracksRealReserve(uint96 amount) public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         _buy(alice, bound(amount, 1e12, 2 ether));
         assertEq(
             curve.virtualNativeReserve() - V_NATIVE_START,
@@ -143,7 +143,7 @@ contract BondingCurveTest is Fixture {
 
     /// @dev Buying and immediately selling must lose money, on-chain, including fees.
     function testFuzz_RoundTripOnChainIsNeverProfitable(uint96 amount) public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         uint256 spend = bound(amount, 1e13, 3 ether);
 
         uint256 before = alice.balance;
@@ -163,7 +163,7 @@ contract BondingCurveTest is Fixture {
     // -----------------------------------------------------------------
 
     function test_BuyDeliversTokensAndRoutesFee() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         uint256 spend = 1 ether;
         uint256 expectedFee = (spend * 100) / 10_000; // 1%
 
@@ -183,7 +183,7 @@ contract BondingCurveTest is Fixture {
     }
 
     function test_BuyRespectsSlippageBound() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         (uint256 quoted,) = curve.quoteBuy(1 ether);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(BondingCurve.SlippageExceeded.selector, quoted, quoted + 1));
@@ -191,7 +191,7 @@ contract BondingCurveTest is Fixture {
     }
 
     function test_BuyRespectsDeadline() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         uint256 past = block.timestamp - 1;
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(BondingCurve.DeadlinePassed.selector, past));
@@ -199,7 +199,7 @@ contract BondingCurveTest is Fixture {
     }
 
     function test_BuyRejectsZeroValue() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         vm.prank(alice);
         vm.expectRevert(BondingCurve.ZeroAmount.selector);
         curve.buy{value: 0}(0, block.timestamp + 1);
@@ -235,7 +235,7 @@ contract BondingCurveTest is Fixture {
     }
 
     function test_AntiSnipeLiftsAfterWindow() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         uint256 got = _buy(alice, MAX_BUY_IN_WINDOW * 3);
         assertGt(got, 0, "cap must not apply once the window has passed");
     }
@@ -278,7 +278,7 @@ contract BondingCurveTest is Fixture {
     // -----------------------------------------------------------------
 
     function test_SellReturnsNativeAndChargesFee() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         uint256 got = _buy(alice, 1 ether);
 
         (uint256 expectedOut,) = curve.quoteSell(got);
@@ -295,7 +295,7 @@ contract BondingCurveTest is Fixture {
     }
 
     function test_SellRespectsSlippageBound() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         uint256 got = _buy(alice, 1 ether);
         (uint256 expectedOut,) = curve.quoteSell(got);
 
@@ -307,7 +307,7 @@ contract BondingCurveTest is Fixture {
     }
 
     function test_CannotSellMoreThanEverSold() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         _buy(alice, 1 ether);
         uint256 sold = curve.tokensSold();
         vm.prank(alice);
@@ -320,7 +320,7 @@ contract BondingCurveTest is Fixture {
     // -----------------------------------------------------------------
 
     function _buyOutTheCurve() internal {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         // Walk the curve up in chunks, then finish with a deliberate overpay to exercise the
         // partial-fill and refund path.
         for (uint256 i; i < 6 && !curve.graduated(); ++i) {
@@ -363,7 +363,7 @@ contract BondingCurveTest is Fixture {
     /// @dev The final buy is overpaid on purpose; the excess must come back rather than being
     ///      absorbed as an oversized fee.
     function test_FinalBuyRefundsOverpayment() public {
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         // The curve completes at ~4.4 ether of net inflow, so four 1-ether buys leave it close to
         // full but not graduated - which is the state the overpay path needs to be exercised in.
         for (uint256 i; i < 4; ++i) {
@@ -403,7 +403,7 @@ contract BondingCurveTest is Fixture {
         );
         BondingCurve c2 = BondingCurve(payable(c));
 
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
         for (uint256 i; i < 6 && !c2.graduated(); ++i) {
             vm.prank(alice);
             c2.buy{value: 1 ether}(0, block.timestamp + 1);
@@ -447,7 +447,7 @@ contract BondingCurveTest is Fixture {
     ///      charged more than 1.5%.
     function test_CurveFeeCannotExceedOnePointFivePercentEndToEnd() public {
         _setFee(IFeeRouter.Product.BondingCurveTrade, 150, 5000, 0);
-        vm.warp(block.timestamp + ANTI_SNIPE_WINDOW + 1);
+        vm.warp(vm.getBlockTimestamp() + ANTI_SNIPE_WINDOW + 1);
 
         uint256 spend = 2 ether;
         uint256 feesBefore = feeRouter.balanceOf(creator, address(0)) + feeRouter.balanceOf(treasury, address(0));

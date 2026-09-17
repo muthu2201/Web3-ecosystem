@@ -206,7 +206,7 @@ contract TokensTest is Fixture {
         token.delegate(creator);
         assertEq(token.getVotes(creator), SUPPLY);
 
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
         vm.prank(creator);
         assertTrue(token.transfer(alice, 400_000e18));
         assertEq(token.getVotes(creator), SUPPLY - 400_000e18);
@@ -437,7 +437,8 @@ contract TokensTest is Fixture {
         bytes32 userSalt = keccak256("predict");
         bytes memory initCode =
             abi.encodePacked(type(StandardToken).creationCode, abi.encode("Token", "TKN", SUPPLY, creator, creator));
-        address predicted = tokenFactory.computeAddress(creator, userSalt, keccak256(initCode));
+        address predicted =
+            tokenFactory.computeAddress(TokenFactory.Template.Standard, creator, userSalt, keccak256(initCode));
 
         vm.prank(creator);
         address actual = tokenFactory.deployStandard{value: deployFee}(_base(userSalt));
