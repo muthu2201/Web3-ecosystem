@@ -7,7 +7,12 @@
   "dexRouter": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
   "create2Deployer": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
   "saltNamespace": "web3-ecosystem:v1:",
-  "gasPayer": "0x9230B15358aA3F2f0A41B8B5fa180AeC174F398E",
+  "gasPayer": {
+    "address": "0x9230B15358aA3F2f0A41B8B5fa180AeC174F398E",
+    "status": "swept and discarded",
+    "note": "Ephemeral, generated for this deployment and never given authority - every owner and treasury is a constructor argument. Residue returned to the owner; the key is not retained.",
+    "sweepTx": "0x9d165f6dc63b9ab5e4413242fc1b434182decdb56812fc8c45d954c2e2ac186a"
+  },
   "phaseACostEth": "0.000179868530979703",
   "addresses": {
     "feeRouter": "0x5eD2184Bfb39870758494D45b31782F110ce4750",
@@ -55,5 +60,33 @@
   "explorer": {
     "blockscout": "https://base.blockscout.com",
     "sourceVerified": "all 17 contracts"
+  },
+  "smokeTest": {
+    "date": "2026-09-17",
+    "note": "A real exercise of the live factories, not a fork. Graduation is not included: a curve graduates on crossing its raise threshold against a 1.5 ETH virtual reserve, which is real money rather than dust. Graduation was proven end to end against a Base mainnet fork with the real Uniswap V2 router.",
+    "token": {
+      "address": "0x7A5e1d1e63B6dD577433cB2165e941CA3bAa89a2",
+      "name": "Base Launch Test",
+      "symbol": "BLT",
+      "supply": "1000000",
+      "tx": "0xbabf44c74d965f3cae588f3361ab769bdb9a293d0437570b1c9217670761a4ba",
+      "gas": 997539
+    },
+    "curve": {
+      "address": "0x2689e589305FeBE1a69c0223bfc807D47543b59C",
+      "token": "0x1aDbe91005E2540d224011B16949CF10755B6274",
+      "name": "Base Curve Test",
+      "symbol": "BCT",
+      "tx": "0xeecb5c74744c1640628c3f9e29a8b9d1bc6539c35aba32ede6e9654793a333ae",
+      "gas": 3752671
+    },
+    "buy": {
+      "tx": "0x71efccc4b5f78195d5af897b5a827278efdb350eb867954952da08eea1b6f39b",
+      "gas": 130970,
+      "paid": "0.00003 ETH",
+      "received": "21459.570808583828323433 BCT",
+      "feeRouterBalanceAfter": "0 ETH - every product fee starts at zero"
+    },
+    "totalCost": "0.0000307863 ETH"
   }
 }
