@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web3 Ecosystem</title>
+    <meta name="description" content="Non-custodial multi-chain token launcher, swap and NFT platform." />
+    <!--
+      A strict CSP is the main defence against the attack that took $1.46B from Bybit in
+      February 2025: injected JavaScript in a served front-end, with no contract exploited at all.
+      'wasm-unsafe-eval' is required by some wallet SDKs; connect-src is restricted to the
+      platform's own edge proxy plus wallet RPC endpoints, so an injected script has nowhere to
+      exfiltrate to even if it executes.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.workers.dev https://mainnet.base.org https://bsc-dataseed.bnbchain.org wss:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
