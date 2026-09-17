@@ -204,6 +204,28 @@ export class BondingCurveAdapter implements BondingCurvePort {
     };
   }
 
+  /**
+   * Whether the factory on `chain` created this curve.
+   *
+   * Curves are runtime clones, so they cannot appear in a static deployment manifest. Anything
+   * that needs to know a curve is genuine - the MCP server's guard rail above all - has to ask
+   * the factory. Encoded from the generated ABI rather than a hand-written selector, because a
+   * hand-written one is silently wrong until something reverts: the first attempt at this used
+   * 0x2b3297f9 when the real selector is 0x927407ea.
+   */
+  async isPlatformCurve(chain: Caip2, curve: Address): Promise<boolean> {
+    const reader = this.readerFor(chain);
+    const { bondingCurveFactory } = getDeployment(chain);
+    const data = encodeFunctionData({
+      abi: BondingCurveFactoryAbi,
+      functionName: 'isCurve',
+      args: [curve],
+    });
+    const raw = await reader.call(bondingCurveFactory, data);
+    if (raw === '0x') return false;
+    return decodeAbiParameters(parseAbiParameters('bool'), raw)[0];
+  }
+
   async predictCurveAddress(chain: Caip2, creator: Address, salt: Hex): Promise<Address> {
     const reader = this.readerFor(chain);
     const { bondingCurveFactory } = getDeployment(chain);

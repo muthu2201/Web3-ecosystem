@@ -1,0 +1,16 @@
+name = "web3eco-mcp"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[observability]
+enabled = true
+
+[vars]
+# Ceiling on the native value any single built transaction may carry, in wei.
+# A compromised agent cannot exceed this even if it is instructed to.
+MAX_TX_VALUE_WEI = "1000000000000000000"

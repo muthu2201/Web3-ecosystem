@@ -1,0 +1,23 @@
+name = "web3eco-edge"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Rate-limit counters. KV is eventually consistent, which is acceptable here: the limiter is a
+# cost-control and abuse-dampening measure, not a security boundary. Anything that must be exact
+# is enforced on chain.
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "REPLACE_WITH_CACHE_NAMESPACE_ID"
+
+[observability]
+enabled = true
+
+# Secrets are set with `wrangler secret put`, never committed:
+#   ZEROEX_API_KEY, GOPLUS_APP_KEY, GOPLUS_APP_SECRET, ETHERSCAN_API_KEY, PINATA_JWT
+[vars]
+ALLOWED_ORIGINS = "https://app.example.com"
