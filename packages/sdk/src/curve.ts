@@ -297,3 +297,23 @@ function toCurveState(s: CurveSnapshot) {
 }
 
 export { MIN_LP_LOCK_SECONDS };
+
+/**
+ * Compute a transaction deadline from CHAIN time, not from the client's clock.
+ *
+ * `Date.now()` is the wrong basis for a deadline. A chain's timestamp can sit well ahead of or
+ * behind wall-clock time — an L2 under load, a local fork that has been warped, a testnet whose
+ * sequencer has drifted — and a deadline derived from the wrong clock either reverts instantly
+ * as already-expired or silently disables the protection it was meant to provide. The user's
+ * device clock being wrong should not be able to do either.
+ *
+ * One extra read is cheap; a swap that reverts on an expired deadline costs gas and a retry.
+ */
+export async function deadlineFromChain(
+  reader: ChainReaderPort,
+  secondsFromNow: number,
+): Promise<number> {
+  if (secondsFromNow <= 0) throw new CurveOptionsError('deadline must be in the future');
+  const now = await reader.getBlockTimestamp();
+  return now + secondsFromNow;
+}

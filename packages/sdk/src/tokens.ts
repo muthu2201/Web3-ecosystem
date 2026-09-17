@@ -276,10 +276,12 @@ export class TokenFactoryAdapter implements TokenFactoryPort {
    * Compute the token's future address locally.
    *
    * The factory salts CREATE2 with `keccak256(deployer, userSalt)` so two deployers using the
-   * same salt cannot collide and nobody can front-run an address someone else computed. That
-   * derivation is reproduced here exactly; `sdk.test.ts` checks it against the factory's own
-   * `computeAddress`, because a mismatch would mean showing a user one address and deploying to
-   * another.
+   * same salt cannot collide and nobody can front-run an address someone else computed.
+   *
+   * The CREATE2 origin is the template's own deployer contract, not the factory, because that is
+   * the contract which executes the CREATE2. Getting this wrong would mean showing a user one
+   * address and deploying to another, so the integration test checks this against the factory's
+   * own `computeAddress` on a live chain rather than trusting the derivation.
    */
   async predictAddress(
     chain: Caip2,
@@ -287,9 +289,23 @@ export class TokenFactoryAdapter implements TokenFactoryPort {
     options: TokenDeployOptions,
   ): Promise<Address> {
     validateCommon(options);
-    const { tokenFactory } = getDeployment(chain);
+    const origin = await this.deployerFor(chain, options.template);
     const initCodeHash = this.initCodeHash(options, deployer);
-    return computeCreate2Address(tokenFactory, effectiveSalt(deployer, options.salt), initCodeHash);
+    return computeCreate2Address(origin, effectiveSalt(deployer, options.salt), initCodeHash);
+  }
+
+  /** CREATE2 origin for a template: the small per-template deployer the factory routes through. */
+  async deployerFor(chain: Caip2, template: TokenTemplate): Promise<Address> {
+    const reader = this.readerFor(chain);
+    const { tokenFactory } = getDeployment(chain);
+    const data = encodeFunctionData({
+      abi: TokenFactoryAbi,
+      functionName: 'deployerFor',
+      args: [TEMPLATE_ORDINAL[template]],
+    });
+    const raw = await reader.call(tokenFactory, data);
+    if (raw === '0x') throw new SdkError(`factory returned no deployer for template "${template}"`);
+    return decodeAbiParameters(parseAbiParameters('address'), raw)[0];
   }
 
   /** keccak256(creationCode ++ encodedConstructorArgs) for this template and options. */
