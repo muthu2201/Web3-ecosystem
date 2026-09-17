@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/artifacts/
+lcov.info
+
+# Builds
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+.wrangler/
+.astro/
+
+# Env & secrets - never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+*.log
+coverage/
