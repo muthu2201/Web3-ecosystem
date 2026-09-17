@@ -1,0 +1,59 @@
+{
+  "chain": "eip155:8453",
+  "name": "Base",
+  "deployedAt": "2026-09-17",
+  "owner": "0x7Dd4B2E211dD40134eDf9736690497E057D45233",
+  "treasury": "0x7Dd4B2E211dD40134eDf9736690497E057D45233",
+  "dexRouter": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+  "create2Deployer": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+  "saltNamespace": "web3-ecosystem:v1:",
+  "gasPayer": "0x9230B15358aA3F2f0A41B8B5fa180AeC174F398E",
+  "phaseACostEth": "0.000179868530979703",
+  "addresses": {
+    "feeRouter": "0x5eD2184Bfb39870758494D45b31782F110ce4750",
+    "tokenFactory": "0x38995Ced7d483FCb007814950F50Fc623786747B",
+    "liquidityLocker": "0x8Cbe6F46Fa48525aDaEdB5C0Dec832615D47bAeF",
+    "bondingCurveFactory": "0xA6744969E220A6cb91A7075b196641fD904De3b4",
+    "presaleFactory": "0x484eca933E4a39E99Fa145626c300b7D32e53853",
+    "tokenVesting": "0x26E10893ca7Ac32895229F6a8550541a266feD6D",
+    "merkleDistributor": "0x680494F62BcA3a42cE3a81895c1D5C265Ca96284",
+    "nftFactory": "0x5a8Eefe72A2b6C7ba7AA702f6B2a5133627b1804",
+    "nftMarketplace": "0x7A6edB5d346b1060C8C2087ADF4D550555cD6D3c"
+  },
+  "implementations": {
+    "bondingCurve": "0x65686a15a74921bCBbE71980B2424609844f89Ef",
+    "presale": "0xf81Da5d088A630dBc742031fC19F5D490f7b17Ce"
+  },
+  "tokenDeployers": {
+    "standard": "0x1Eb4C2d67bC5021De2158f99AdFdc76a224DE760",
+    "mintable": "0x62DE0BB4daa3516a8eB36D3CAcd3b90546AC5393",
+    "pausable": "0xeF8E11F050183a3cD4aDc6952511E4AdEb89e6F1",
+    "governance": "0xfbA8ae725cd48D79BBfd2bb6034F01bBB85F2f0f",
+    "tax": "0x1CD280dF023b68BAe361f6867374Da2a0d7D7F63",
+    "compliance": "0xa3c7e9876aEb2992182977504824e30F750Bcac6"
+  },
+  "phaseB": {
+    "status": "pending - must be signed by the owner",
+    "note": "Each call works exactly once. Until all three land, launches revert with ImplementationNotSet and token deployment has no bound template.",
+    "calls": [
+      {
+        "label": "BondingCurveFactory.setCurveImplementation",
+        "to": "0xA6744969E220A6cb91A7075b196641fD904De3b4",
+        "value": "0x0",
+        "data": "0xdfb495c700000000000000000000000065686a15a74921bcbbe71980b2424609844f89ef"
+      },
+      {
+        "label": "PresaleFactory.setPresaleImplementation",
+        "to": "0x484eca933E4a39E99Fa145626c300b7D32e53853",
+        "value": "0x0",
+        "data": "0x9700df88000000000000000000000000f81da5d088a630dbc742031fc19f5d490f7b17ce"
+      },
+      {
+        "label": "TokenFactory.bindDeployers",
+        "to": "0x38995Ced7d483FCb007814950F50Fc623786747B",
+        "value": "0x0",
+        "data": "0xf7aca9b80000000000000000000000001eb4c2d67bc5021de2158f99adfdc76a224de76000000000000000000000000062de0bb4daa3516a8eb36d3cacd3b90546ac5393000000000000000000000000ef8e11f050183a3cd4adc6952511e4adeb89e6f1000000000000000000000000fba8ae725cd48d79bbfd2bb6034f01bbb85f2f0f0000000000000000000000001cd280df023b68bae361f6867374da2a0d7d7f63000000000000000000000000a3c7e9876aeb2992182977504824e30f750bcac6"
+      }
+    ]
+  }
+}

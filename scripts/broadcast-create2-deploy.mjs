@@ -20,6 +20,26 @@ import { buildPlan } from './plan-create2-deploy.mjs';
 
 const RPC = process.env.RPC_URL ?? 'https://sepolia.base.org';
 const CONFIRM_TIMEOUT_MS = 180_000;
+const CODE_POLL_ATTEMPTS = 20;
+const CODE_POLL_INTERVAL_MS = 1_500;
+
+/**
+ * Read code at an address, tolerating a lagging node.
+ *
+ * Public RPC endpoints are load balanced. `waitForTransactionReceipt` can be answered by a node
+ * that has the block while the very next `eth_getCode` lands on one that does not yet, which reads
+ * as "the deployment produced no code" when the deployment was fine. Observed on Base mainnet: a
+ * successful 1.34M-gas deployment reported empty, and the same address returned 5,581 bytes a few
+ * seconds later. So poll rather than trusting a single read.
+ */
+async function waitForCode(pub, address) {
+  for (let i = 0; i < CODE_POLL_ATTEMPTS; i++) {
+    const code = await pub.getCode({ address }).catch(() => undefined);
+    if (code && code !== '0x') return code;
+    await new Promise((r) => setTimeout(r, CODE_POLL_INTERVAL_MS));
+  }
+  return undefined;
+}
 
 function required(name) {
   const v = process.env[name];
@@ -76,8 +96,14 @@ async function main() {
     const rcpt = await pub.waitForTransactionReceipt({ hash, timeout: CONFIRM_TIMEOUT_MS });
     if (rcpt.status !== 'success') throw new Error(`${step.contract}: transaction ${hash} reverted`);
 
-    const code = await pub.getCode({ address: step.address });
-    if (!code || code === '0x') throw new Error(`${step.contract}: no code at ${step.address} after ${hash}`);
+    const code = await waitForCode(pub, step.address);
+    if (!code) {
+      throw new Error(
+        `${step.contract}: no code at ${step.address} after ${hash}, still absent ` +
+        `${(CODE_POLL_ATTEMPTS * CODE_POLL_INTERVAL_MS) / 1000}s later. The transaction succeeded, ` +
+        'so re-run to resume - a genuinely missing contract will simply be redeployed.',
+      );
+    }
 
     console.log(`ok     ${step.contract.padEnd(24)} ${step.address}  gas ${rcpt.gasUsed}  ${hash}`);
     sent += 1;
