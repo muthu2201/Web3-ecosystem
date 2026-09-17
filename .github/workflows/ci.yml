@@ -27,7 +27,11 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # Pinned, not `stable`. The compiler version is part of what determines the deployed
+          # bytecode, so a moving toolchain means CI cannot reproduce a build - and `stable`
+          # moving is exactly what turned every contract job red here with no code change.
+          # Bump this deliberately, with the suite re-run against the new version.
+          version: v1.5.1
 
       # Mocks are fine in contracts/test/. A mock reaching src/ or the production deploy script
       # is the kind of mistake that reads as harmless in review and is catastrophic on chain, so
@@ -88,7 +92,11 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # Pinned, not `stable`. The compiler version is part of what determines the deployed
+          # bytecode, so a moving toolchain means CI cannot reproduce a build - and `stable`
+          # moving is exactly what turned every contract job red here with no code change.
+          # Bump this deliberately, with the suite re-run against the new version.
+          version: v1.5.1
 
       - uses: actions/setup-python@v5
         with:
@@ -113,9 +121,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose. pnpm/action-setup reads packageManager from package.json,
+      # and supplying both is now a hard error. One source of truth, and it is the one pnpm
+      # itself enforces at runtime.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -125,7 +134,11 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # Pinned, not `stable`. The compiler version is part of what determines the deployed
+          # bytecode, so a moving toolchain means CI cannot reproduce a build - and `stable`
+          # moving is exactly what turned every contract job red here with no code change.
+          # Bump this deliberately, with the suite re-run against the new version.
+          version: v1.5.1
 
       - run: pnpm install --frozen-lockfile
 
@@ -164,9 +177,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose. pnpm/action-setup reads packageManager from package.json,
+      # and supplying both is now a hard error. One source of truth, and it is the one pnpm
+      # itself enforces at runtime.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -176,7 +190,11 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # Pinned, not `stable`. The compiler version is part of what determines the deployed
+          # bytecode, so a moving toolchain means CI cannot reproduce a build - and `stable`
+          # moving is exactly what turned every contract job red here with no code change.
+          # Bump this deliberately, with the suite re-run against the new version.
+          version: v1.5.1
 
       - run: pnpm install --frozen-lockfile
 
@@ -218,9 +236,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose. pnpm/action-setup reads packageManager from package.json,
+      # and supplying both is now a hard error. One source of truth, and it is the one pnpm
+      # itself enforces at runtime.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
