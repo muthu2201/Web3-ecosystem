@@ -8,6 +8,7 @@
 
 import { decodeRiskFlags, parseUnits, type TokenTemplate, type TxRequest } from '@web3eco/core';
 import { AlertTriangle, Check } from 'lucide-react';
+import type { JSX } from 'react';
 import { useMemo, useState } from 'react';
 import { useAccount, useSendTransaction } from 'wagmi';
 

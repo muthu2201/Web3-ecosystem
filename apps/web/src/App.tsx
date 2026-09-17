@@ -7,6 +7,7 @@
  * on a phone.
  */
 
+import type { JSX } from 'react';
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 

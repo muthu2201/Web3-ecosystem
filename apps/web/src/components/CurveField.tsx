@@ -17,6 +17,7 @@
  */
 
 import { sampleCurve } from '@web3eco/core';
+import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 

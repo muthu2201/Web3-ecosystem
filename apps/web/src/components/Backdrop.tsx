@@ -5,6 +5,9 @@
  * and a much weaker sand wash bottom-right, both far below the content in contrast so they never
  * compete with text. Fixed and pointer-events-none so they cost nothing at scroll time.
  */
+
+import type { JSX } from 'react';
+
 export function Backdrop(): JSX.Element {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>

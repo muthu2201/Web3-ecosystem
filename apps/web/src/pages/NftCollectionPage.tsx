@@ -10,6 +10,7 @@ import { formatUnits } from '@web3eco/core';
 import type { TxRequest } from '@web3eco/core';
 import type { CollectionSnapshot, MintPhase } from '@web3eco/sdk';
 import { ArrowLeft, Lock, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAccount, useSendTransaction } from 'wagmi';

@@ -11,6 +11,7 @@
  * cannot see anything" must not look the same.
  */
 
+import type { JSX } from 'react';
 import { allChains, hasDeployment } from '@web3eco/chain-registry';
 import { PlugZap } from 'lucide-react';
 import { Link } from 'react-router-dom';

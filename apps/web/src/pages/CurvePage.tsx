@@ -10,6 +10,7 @@
 import type { CurveSnapshot } from '@web3eco/core';
 import { applySlippage, formatUnits, parseUnits, type TxRequest } from '@web3eco/core';
 import { ArrowLeft, ArrowUpDown, Radio, RefreshCw } from 'lucide-react';
+import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAccount, useSendTransaction } from 'wagmi';

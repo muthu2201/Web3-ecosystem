@@ -9,6 +9,7 @@
 import { formatUnits, parseUnits, sampleCurve, type TxRequest } from '@web3eco/core';
 import { MIN_LP_LOCK_SECONDS } from '@web3eco/sdk';
 import { Flame, Rocket, ShieldCheck, TrendingUp } from 'lucide-react';
+import type { JSX } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAccount, useSendTransaction } from 'wagmi';
 

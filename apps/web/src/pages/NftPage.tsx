@@ -10,6 +10,7 @@ import { formatUnits, parseUnits } from '@web3eco/core';
 import type { TxRequest } from '@web3eco/core';
 import { MAX_ROYALTY_BPS, type CollectionSnapshot } from '@web3eco/sdk';
 import { Image as ImageIcon, Images, Plus, ShieldCheck } from 'lucide-react';
+import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount, useSendTransaction } from 'wagmi';

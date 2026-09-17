@@ -9,6 +9,7 @@
 import type { CurveSnapshot } from '@web3eco/core';
 import { formatUnits } from '@web3eco/core';
 import { Radio, TrendingUp } from 'lucide-react';
+import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 

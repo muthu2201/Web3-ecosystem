@@ -11,6 +11,7 @@ import { formatUnits, parseUnits } from '@web3eco/core';
 import type { TxRequest } from '@web3eco/core';
 import type { LockRecord } from '@web3eco/sdk';
 import { CalendarClock, KeyRound, Lock, Plus, Search, Unlock } from 'lucide-react';
+import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount, useSendTransaction } from 'wagmi';
 

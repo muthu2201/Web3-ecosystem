@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
+import type { JSX } from 'react';
 import { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 

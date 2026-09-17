@@ -1,6 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "outDir": "dist", "rootDir": "src" },
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    // StoragePort.pinFile takes a Blob, which is a web-standard type present in every runtime
+    // this package targets (browser, Cloudflare Workers, Node 18+) but not in the ES2023 lib.
+    // TypeScript 5 happened to pick it up from an ambient @types global; TypeScript 7 does not,
+    // which is the correct behaviour. Declaring the dependency here beats relying on a leak.
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]
 }

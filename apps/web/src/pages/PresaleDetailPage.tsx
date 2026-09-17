@@ -10,6 +10,7 @@
 import type { PresaleSnapshot, TxRequest } from '@web3eco/core';
 import { formatUnits, parseUnits } from '@web3eco/core';
 import { ArrowLeft, Gavel, HandCoins, RefreshCw, Undo2 } from 'lucide-react';
+import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAccount, useSendTransaction } from 'wagmi';

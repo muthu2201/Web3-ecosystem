@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { AlertTriangle, CheckCircle2, Info, OctagonAlert } from 'lucide-react';
 
 import { cn } from '../../lib/cn.js';

@@ -29,6 +29,12 @@ jobs:
         with:
           version: stable
 
+      # Mocks are fine in contracts/test/. A mock reaching src/ or the production deploy script
+      # is the kind of mistake that reads as harmless in review and is catastrophic on chain, so
+      # it is checked mechanically rather than left to discipline.
+      - name: Enforce production/test isolation
+        run: node scripts/check-production-isolation.mjs
+
       - name: Check formatting
         working-directory: contracts
         run: forge fmt --check

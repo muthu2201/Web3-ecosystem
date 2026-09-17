@@ -1,4 +1,5 @@
 import { Menu, X } from 'lucide-react';
+import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 

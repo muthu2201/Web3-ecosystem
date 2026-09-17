@@ -11,6 +11,7 @@ import type { PresaleSnapshot } from '@web3eco/core';
 import { formatUnits, parseUnits } from '@web3eco/core';
 import { PRESALE_LIMITS, tokensNeededFor, type PresaleCreateOptions } from '@web3eco/sdk';
 import { Coins, Flame, Plus, Rocket, Users } from 'lucide-react';
+import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount, useSendTransaction } from 'wagmi';

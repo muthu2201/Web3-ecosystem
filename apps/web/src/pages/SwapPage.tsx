@@ -13,6 +13,7 @@ import type { Quote, RiskReport, TokenProfile, TxRequest } from '@web3eco/core';
 import { formatUnits, parseUnits } from '@web3eco/core';
 import { swapStrategy } from '@web3eco/chain-registry';
 import { ArrowDownUp, Route, Search, Wallet } from 'lucide-react';
+import type { JSX } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAccount, useSendTransaction } from 'wagmi';
 

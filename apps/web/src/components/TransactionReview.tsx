@@ -23,6 +23,7 @@
 
 import type { SimulationResult, TxRequest } from '@web3eco/core';
 import { formatUnits } from '@web3eco/core';
+import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 
 import { Button } from './ui/Button.js';

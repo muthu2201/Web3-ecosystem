@@ -1,10 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-/// @notice Minimal Uniswap V2 / PancakeSwap V2 / Aerodrome-compatible surface.
+/// @notice Minimal Uniswap-V2-compatible surface: Uniswap V2 and PancakeSwap V2 forks only.
 /// @dev Declared locally rather than vendored so the ecosystem compiles against a single
 ///      Solidity version. Only the functions actually used are declared, which keeps the
 ///      trusted external surface small and auditable.
+///
+///      NOT Aerodrome or Velodrome. Those are Solidly forks whose factory exposes
+///      `getPool(address,address,bool)` rather than the two-argument `getPair` below; the
+///      two-argument call reverts against Aerodrome's factory on Base mainnet. They also mint
+///      non-fungible liquidity rather than an ERC-20 LP token, so neither the burn-to-`0xdEaD`
+///      nor the `LiquidityLocker` path could hold it.
+///
+///      NOT Uniswap V3 or V4 either, for the same second reason: their liquidity positions are
+///      ERC-721, so "the LP was burned" stops being something a holder can verify with one
+///      balance read. The chain registry's `supportsV2PoolCreation` flag is what keeps an
+///      incompatible venue from ever reaching these calls.
 interface IUniswapV2Factory {
     function getPair(address tokenA, address tokenB) external view returns (address pair);
     function createPair(address tokenA, address tokenB) external returns (address pair);

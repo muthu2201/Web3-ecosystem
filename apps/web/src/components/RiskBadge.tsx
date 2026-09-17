@@ -12,6 +12,7 @@
 
 import type { RiskFinding, RiskSeverity } from '@web3eco/core';
 import { AlertTriangle, CheckCircle2, Info, OctagonAlert } from 'lucide-react';
+import type { JSX } from 'react';
 import { useState } from 'react';
 
 import { cn } from '../lib/cn.js';

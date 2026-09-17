@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Wallet } from 'lucide-react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 

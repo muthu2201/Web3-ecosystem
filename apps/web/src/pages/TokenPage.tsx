@@ -14,6 +14,7 @@ import { decodeRiskFlags, formatUnits, worstSeverity } from '@web3eco/core';
 import { erc20Caip19 } from '@web3eco/adapters';
 import { explorerAddressUrl } from '@web3eco/chain-registry';
 import { ExternalLink, FileSearch, Search } from 'lucide-react';
+import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 

@@ -7,6 +7,7 @@
  * ceiling the fee can never exceed, which is the claim the FeeRouter actually enforces.
  */
 
+import type { JSX } from 'react';
 import type { QuoteFee } from '@web3eco/core';
 import { formatUnits } from '@web3eco/core';
 
