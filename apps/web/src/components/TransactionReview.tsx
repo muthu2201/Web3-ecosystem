@@ -25,6 +25,9 @@ import type { SimulationResult, TxRequest } from '@web3eco/core';
 import { formatUnits } from '@web3eco/core';
 import { useEffect, useState } from 'react';
 
+import { Button } from './ui/Button.js';
+import { Notice, Spinner } from './ui/Feedback.js';
+
 type SimulationState =
   | { status: 'idle' }
   | { status: 'running' }
@@ -78,43 +81,43 @@ export function TransactionReview({
   const canSign = state.status === 'done' && state.result.success && !submitting;
 
   return (
-    <div style={{ border: '1px solid #2a2a2a', borderRadius: 8, padding: 16, display: 'grid', gap: 14 }}>
+    <div className="rounded-[var(--radius-panel)] border border-ink-800 bg-ink-900/55 p-4 sm:p-5">
       <div>
-        <div style={{ fontWeight: 600, fontSize: 15 }}>Review before signing</div>
-        <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.75 }}>
+        <div className="text-[15px] font-semibold text-ink-100">Review before signing</div>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-ink-400">
           Check this against what your wallet shows. If the two disagree, do not sign.
         </p>
       </div>
 
-      <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', margin: 0, fontSize: 13 }}>
-        <dt style={{ opacity: 0.7 }}>Action</dt>
-        <dd style={{ margin: 0 }}>{tx.summary}</dd>
-
-        <dt style={{ opacity: 0.7 }}>Contract</dt>
-        <dd style={{ margin: 0, fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all' }}>
-          {tx.to}
-        </dd>
-
-        <dt style={{ opacity: 0.7 }}>Value</dt>
-        <dd style={{ margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-          {formatUnits(tx.value, 18)} {nativeSymbol}
-        </dd>
-
-        <dt style={{ opacity: 0.7 }}>Chain</dt>
-        <dd style={{ margin: 0 }}>{tx.chain}</dd>
+      <dl className="mt-4 grid gap-y-2 text-[13px]">
+        <Row label="Action">{tx.summary}</Row>
+        <Row label="Contract">
+          <span className="break-all font-mono text-[12.5px]">{tx.to}</span>
+        </Row>
+        <Row label="Value">
+          <span className="font-mono tabular">
+            {formatUnits(tx.value, 18)} {nativeSymbol}
+          </span>
+        </Row>
+        <Row label="Chain">
+          <span className="font-mono text-[12.5px]">{tx.chain}</span>
+        </Row>
       </dl>
 
-      <SimulationPanel state={state} nativeSymbol={nativeSymbol} />
+      <div className="mt-4">
+        <SimulationPanel state={state} nativeSymbol={nativeSymbol} />
+      </div>
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button type="button" onClick={onCancel} disabled={submitting} style={secondaryButton}>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Button variant="ghost" size="md" onClick={onCancel} disabled={submitting} className="sm:flex-1">
           Cancel
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
+          size="md"
           onClick={onConfirm}
           disabled={!canSign}
-          style={{ ...primaryButton, opacity: canSign ? 1 : 0.45 }}
+          className="sm:flex-[2]"
           title={
             simulationFailed
               ? 'This transaction would revert. Signing it would only cost you gas.'
@@ -124,8 +127,17 @@ export function TransactionReview({
           }
         >
           {submitting ? 'Waiting for your wallet…' : 'Sign in wallet'}
-        </button>
+        </Button>
       </div>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <div className="grid grid-cols-[84px_minmax(0,1fr)] items-baseline gap-3">
+      <dt className="text-[12px] uppercase tracking-[0.06em] text-ink-500">{label}</dt>
+      <dd className="m-0 min-w-0 text-ink-200">{children}</dd>
     </div>
   );
 }
@@ -138,111 +150,67 @@ function SimulationPanel({
   nativeSymbol: string;
 }): JSX.Element {
   if (state.status === 'idle' || state.status === 'running') {
-    return <Panel tone="info">Simulating this transaction against the current chain state…</Panel>;
+    return (
+      <Notice tone="info">
+        <span className="flex items-center gap-2">
+          <Spinner className="h-3.5 w-3.5" />
+          Simulating this transaction against the current chain state…
+        </span>
+      </Notice>
+    );
   }
 
   if (state.status === 'unavailable') {
     // Deliberately distinct from success. An unchecked transaction is not a verified one.
     return (
-      <Panel tone="warning">
-        <strong>This transaction could not be simulated.</strong>
-        <div style={{ marginTop: 4 }}>{state.reason}</div>
-        <div style={{ marginTop: 6 }}>
+      <Notice tone="warn" title="This transaction could not be simulated">
+        <span className="block">{state.reason}</span>
+        <span className="mt-1.5 block">
           That does not mean it is unsafe — it means it has not been checked. Verify every detail
           in your wallet before signing.
-        </div>
-      </Panel>
+        </span>
+      </Notice>
     );
   }
 
   if (!state.result.success) {
     return (
-      <Panel tone="critical">
-        <strong>This transaction would fail.</strong>
-        <div style={{ marginTop: 4 }}>
+      <Notice tone="alert" title="This transaction would fail">
+        <span className="block">
           {state.result.revertReason ?? 'The simulation reverted without giving a reason.'}
-        </div>
-        <div style={{ marginTop: 6 }}>
+        </span>
+        <span className="mt-1.5 block">
           Signing it would cost gas and change nothing. Signing has been disabled.
-        </div>
-      </Panel>
+        </span>
+      </Notice>
     );
   }
 
   return (
-    <Panel tone="ok">
-      <strong>Simulation succeeded.</strong>
+    <Notice tone="good" title="Simulation succeeded">
       {state.result.gasUsed !== null && (
-        <div style={{ marginTop: 4, opacity: 0.8 }}>
+        <span className="block font-mono text-[12px] tabular">
           Estimated gas: {state.result.gasUsed.toString()}
-        </div>
+        </span>
       )}
       {state.result.balanceChanges.length > 0 && (
-        <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+        <ul className="mt-2 grid gap-1">
           {state.result.balanceChanges.map((change, i) => (
-            <li key={i} style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {change.delta < 0n ? '−' : '+'}
-              {formatUnits(change.delta < 0n ? -change.delta : change.delta, 18)} {nativeSymbol}{' '}
-              <span style={{ opacity: 0.6 }}>{change.account}</span>
+            <li key={i} className="font-mono text-[12px] tabular">
+              <span className={change.delta < 0n ? 'text-alert-400' : 'text-good-400'}>
+                {change.delta < 0n ? '−' : '+'}
+                {formatUnits(change.delta < 0n ? -change.delta : change.delta, 18)} {nativeSymbol}
+              </span>{' '}
+              <span className="break-all text-ink-500">{change.account}</span>
             </li>
           ))}
         </ul>
       )}
       {state.result.warnings.map((warning) => (
-        <div key={warning} style={{ marginTop: 6 }}>
+        <span key={warning} className="mt-1.5 block">
           {warning}
-        </div>
+        </span>
       ))}
-    </Panel>
+    </Notice>
   );
 }
-
-function Panel({
-  tone,
-  children,
-}: {
-  tone: 'ok' | 'info' | 'warning' | 'critical';
-  children: React.ReactNode;
-}): JSX.Element {
-  const tones = {
-    ok: { background: '#0d2a18', borderColor: '#2f9457', color: '#a9f0c6' },
-    info: { background: '#12243a', borderColor: '#2f6ab9', color: '#addcff' },
-    warning: { background: '#3a2c0d', borderColor: '#b98d2f', color: '#ffddad' },
-    critical: { background: '#3a0d0d', borderColor: '#b9382f', color: '#ffb4ad' },
-  } as const;
-
-  return (
-    <div
-      style={{
-        ...tones[tone],
-        border: '1px solid',
-        borderRadius: 6,
-        padding: 12,
-        fontSize: 13,
-        lineHeight: 1.5,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-const primaryButton: React.CSSProperties = {
-  flex: 1,
-  padding: '10px 16px',
-  borderRadius: 6,
-  border: '1px solid #3b82f6',
-  background: '#1d4ed8',
-  color: 'white',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const secondaryButton: React.CSSProperties = {
-  padding: '10px 16px',
-  borderRadius: 6,
-  border: '1px solid #3a3a3a',
-  background: 'transparent',
-  color: 'inherit',
-  cursor: 'pointer',
-};

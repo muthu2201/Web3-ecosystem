@@ -1,78 +1,101 @@
 /**
  * Risk disclosure.
  *
- * The blueprint is unambiguous that warnings must be unskippable and in plain language, because
- * the pattern being defended against is a user buying a token whose contract lets someone else
- * take it back. These components deliberately do not use subtle styling for critical findings:
- * a power that lets an account seize a balance is not a footnote.
+ * Warnings here are unskippable and in plain language, because the pattern being defended against
+ * is a user buying a token whose contract lets someone else take it back. Critical findings are
+ * deliberately not styled subtly: a power that lets an account seize a balance is not a footnote.
+ *
+ * Every severity pairs a colour with an icon and a word. Colour alone fails for roughly one in
+ * twelve men, and this component uses colour to distinguish "your money is at risk" from "this is
+ * fine".
  */
 
 import type { RiskFinding, RiskSeverity } from '@web3eco/core';
+import { AlertTriangle, CheckCircle2, Info, OctagonAlert } from 'lucide-react';
 import { useState } from 'react';
 
-const SEVERITY_LABEL: Record<RiskSeverity, string> = {
-  critical: 'Critical',
-  warning: 'Warning',
-  info: 'Note',
-  none: 'No findings',
-};
+import { cn } from '../lib/cn.js';
 
-const SEVERITY_STYLE: Record<RiskSeverity, React.CSSProperties> = {
-  critical: { background: '#3a0d0d', borderColor: '#b9382f', color: '#ffb4ad' },
-  warning: { background: '#3a2c0d', borderColor: '#b98d2f', color: '#ffddad' },
-  info: { background: '#12243a', borderColor: '#2f6ab9', color: '#addcff' },
-  none: { background: '#0d2a18', borderColor: '#2f9457', color: '#a9f0c6' },
-};
+const SEVERITY = {
+  critical: {
+    label: 'Critical',
+    icon: OctagonAlert,
+    chip: 'border-alert-500/45 bg-alert-500/14 text-alert-400',
+    card: 'border-alert-500/40 bg-alert-500/8',
+  },
+  warning: {
+    label: 'Warning',
+    icon: AlertTriangle,
+    chip: 'border-warn-500/40 bg-warn-500/12 text-warn-400',
+    card: 'border-warn-500/35 bg-warn-500/7',
+  },
+  info: {
+    label: 'Note',
+    icon: Info,
+    chip: 'border-flux-600/40 bg-flux-600/12 text-flux-300',
+    card: 'border-flux-600/30 bg-flux-600/7',
+  },
+  none: {
+    label: 'No findings',
+    icon: CheckCircle2,
+    chip: 'border-good-500/40 bg-good-500/12 text-good-400',
+    card: 'border-good-500/35 bg-good-500/7',
+  },
+} as const satisfies Record<RiskSeverity, unknown>;
 
 export function RiskBadge({ severity }: { severity: RiskSeverity }): JSX.Element {
+  const config = SEVERITY[severity];
+  const Icon = config.icon;
   return (
     <span
-      style={{
-        ...SEVERITY_STYLE[severity],
-        border: '1px solid',
-        borderRadius: 4,
-        padding: '2px 8px',
-        fontSize: 12,
-        fontWeight: 600,
-      }}
+      className={cn(
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-pill)] border px-2.5 py-0.5 text-[11.5px] font-semibold tracking-wide',
+        config.chip,
+      )}
     >
-      {SEVERITY_LABEL[severity]}
+      <Icon className="h-3 w-3" aria-hidden />
+      {config.label}
     </span>
   );
 }
 
 export function RiskFindings({ findings }: { findings: readonly RiskFinding[] }): JSX.Element {
   if (findings.length === 0) {
+    const Icon = SEVERITY.none.icon;
     return (
-      <div style={{ ...SEVERITY_STYLE.none, border: '1px solid', borderRadius: 6, padding: 12 }}>
-        <strong>This token grants no administrative powers.</strong>
-        <p style={{ margin: '6px 0 0', fontSize: 13 }}>
-          Supply is fixed, there is no owner, and no account can mint, pause, tax or seize
-          balances. This is verified from the contract itself, not from a database.
-        </p>
+      <div className={cn('flex gap-3 rounded-[10px] border p-3.5', SEVERITY.none.card)}>
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-good-400" aria-hidden />
+        <div className="min-w-0 text-[13px] leading-relaxed">
+          <div className="font-semibold text-good-400">
+            This token grants no administrative powers.
+          </div>
+          <p className="mt-1 text-ink-300">
+            Supply is fixed, there is no owner, and no account can mint, pause, tax or seize
+            balances. This is verified from the contract itself, not from a database.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 8 }}>
-      {findings.map((finding) => (
-        <li
-          key={finding.code}
-          style={{
-            ...SEVERITY_STYLE[finding.severity],
-            border: '1px solid',
-            borderRadius: 6,
-            padding: 12,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <RiskBadge severity={finding.severity} />
-            <strong>{finding.title}</strong>
-          </div>
-          <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: 1.5 }}>{finding.detail}</p>
-        </li>
-      ))}
+    <ul className="grid gap-2.5">
+      {findings.map((finding) => {
+        const config = SEVERITY[finding.severity];
+        const Icon = config.icon;
+        return (
+          <li key={finding.code} className={cn('rounded-[10px] border p-3.5', config.card)}>
+            <div className="flex flex-wrap items-center gap-2">
+              <RiskBadge severity={finding.severity} />
+              <strong className="text-[14px] text-ink-100">{finding.title}</strong>
+            </div>
+            <p className="mt-2 flex gap-2.5 text-[13px] leading-relaxed text-ink-300">
+              <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-500" aria-hidden />
+              <span className="min-w-0">{finding.detail}</span>
+            </p>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -99,28 +122,19 @@ export function RiskGate({
   return (
     <>
       {blocking.length > 0 && (
-        <label
-          style={{
-            display: 'flex',
-            gap: 8,
-            alignItems: 'flex-start',
-            margin: '12px 0',
-            padding: 12,
-            border: '1px solid #b9382f',
-            borderRadius: 6,
-            background: '#2a0a0a',
-            fontSize: 13,
-          }}
-        >
+        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-[10px] border border-alert-500/50 bg-alert-500/10 p-3.5 text-[13px] leading-relaxed">
           <input
             type="checkbox"
             checked={acknowledged}
             onChange={(e) => setAcknowledgedKey(e.target.checked ? key : null)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-alert-500)]"
           />
-          <span>
+          <span className="min-w-0 text-ink-200">
             I understand this token grants{' '}
-            <strong>{blocking.map((f) => f.title.toLowerCase()).join(', ')}</strong>, and that
-            whoever holds those powers can act against my position at any time.
+            <strong className="text-alert-400">
+              {blocking.map((f) => f.title.toLowerCase()).join(', ')}
+            </strong>
+            , and that whoever holds those powers can act against my position at any time.
           </span>
         </label>
       )}

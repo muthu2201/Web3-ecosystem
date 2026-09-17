@@ -1,6 +1,13 @@
+// Fonts are self-hosted rather than fetched from a CDN: a third-party font request leaks every
+// visitor's IP to that CDN, and the strict CSP in index.html allows 'self' only.
+import '@fontsource-variable/space-grotesk';
+import '@fontsource-variable/jetbrains-mono';
+import './styles/globals.css';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import { WagmiProvider } from 'wagmi';
 
 import { App } from './App.js';
@@ -28,7 +35,9 @@ createRoot(root).render(
   <StrictMode>
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </QueryClientProvider>
     </WagmiProvider>
   </StrictMode>,

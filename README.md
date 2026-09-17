@@ -68,12 +68,43 @@ packages/
   adapters/         0x, GoPlus, GeckoTerminal, Etherscan V2, IPFS, simulation
 
 apps/
-  web/              Static React front-end
+  web/              Static React front-end (Tailwind v4, three.js hero, 13 routes)
   edge/             Cloudflare Worker: API-key custodian, rate limiter, cache
   mcp/              Remote MCP server returning unsigned transactions
 
 scripts/stress/     Full-ecosystem load harness
 ```
+
+## The interface
+
+A static React bundle with no server of its own. Thirteen routes, one per contract capability:
+
+| Route | What it does |
+| --- | --- |
+| `/` | Landing page; the hero renders the real bonding curve with three.js |
+| `/explore` | Live market listing, read from the curve factory's own registry |
+| `/curve/:address` | Bonding-curve trading, quoted locally from on-chain reserves |
+| `/launch` | One-transaction launch onto a bonding curve |
+| `/deploy` | Token deployment across all six templates, with the address predicted first |
+| `/swap` | Aggregator or direct-router swap, every fee itemised |
+| `/presale`, `/presale/:address` | Create a presale or fair launch; contribute, claim, refund |
+| `/nft`, `/nft/:address` | Deploy a collection; configure phases and mint |
+| `/lock` | Lock liquidity, extend a lock, verify any token's locked supply |
+| `/token`, `/token/:address` | Token profile with risk flags read from the contract |
+
+Three properties hold on every one of them:
+
+- **Nothing is read from a database.** Listings, prices, risk flags and sale state all come from
+  chain reads, which is why there is no backend to run and no cache to go stale.
+- **Nothing is signed without a simulation.** Every transaction goes through a review step that
+  simulates the exact payload about to be signed. A failed simulation blocks signing rather than
+  warning, and "could not be checked" is shown as its own state, never as success.
+- **Quotes are computed locally.** The curve maths in `@web3eco/core` is differential-tested
+  byte-for-byte against the Solidity library, so a price can update per keystroke without an RPC
+  round trip and still be the number the chain produces.
+
+Run it locally with `pnpm --filter @web3eco/web dev`. It needs `VITE_DEPLOYMENTS` to reach any
+contract; without it, every contract-backed route says so plainly instead of failing obscurely.
 
 ## Getting started
 

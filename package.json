@@ -8,14 +8,15 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "test": "turbo run test",
+    "test": "vitest run",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "contracts:build": "cd contracts && forge build",
     "contracts:test": "cd contracts && forge test",
     "contracts:abi": "node scripts/export-abis.mjs",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm contracts:test",
-    "stress": "node scripts/stress/run.mjs"
+    "stress": "node scripts/stress/run.mjs",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

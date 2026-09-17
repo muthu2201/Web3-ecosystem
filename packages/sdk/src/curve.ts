@@ -226,6 +226,52 @@ export class BondingCurveAdapter implements BondingCurvePort {
     return decodeAbiParameters(parseAbiParameters('bool'), raw)[0];
   }
 
+  /**
+   * Page through the curves this factory has created.
+   *
+   * Paginated on chain rather than fetched wholesale: an unbounded read grows with every launch
+   * and would eventually exceed an RPC's response limit, taking the listing page down at exactly
+   * the point the platform became busy.
+   */
+  async listCurves(chain: Caip2, offset: number, limit: number): Promise<readonly Address[]> {
+    const reader = this.readerFor(chain);
+    const { bondingCurveFactory } = getDeployment(chain);
+    const data = encodeFunctionData({
+      abi: BondingCurveFactoryAbi,
+      functionName: 'curvesPaged',
+      args: [BigInt(offset), BigInt(limit)],
+    });
+    const raw = await reader.call(bondingCurveFactory, data);
+    if (raw === '0x') return [];
+    return decodeAbiParameters(parseAbiParameters('address[]'), raw)[0];
+  }
+
+  async totalCurves(chain: Caip2): Promise<number> {
+    const reader = this.readerFor(chain);
+    const { bondingCurveFactory } = getDeployment(chain);
+    const data = encodeFunctionData({
+      abi: BondingCurveFactoryAbi,
+      functionName: 'totalCurves',
+    });
+    const raw = await reader.call(bondingCurveFactory, data);
+    return raw === '0x' ? 0 : Number(decodeAbiParameters(parseAbiParameters('uint256'), raw)[0]);
+  }
+
+  /** Read several curves in one batched round trip, for a listing page. */
+  async readCurves(chain: Caip2, curves: readonly Address[]): Promise<CurveSnapshot[]> {
+    const results = await Promise.all(
+      curves.map(async (curve) => {
+        try {
+          return await this.readCurve(chain, curve);
+        } catch {
+          // One unreadable curve must not blank the whole listing.
+          return null;
+        }
+      }),
+    );
+    return results.filter((s): s is CurveSnapshot => s !== null);
+  }
+
   async predictCurveAddress(chain: Caip2, creator: Address, salt: Hex): Promise<Address> {
     const reader = this.readerFor(chain);
     const { bondingCurveFactory } = getDeployment(chain);

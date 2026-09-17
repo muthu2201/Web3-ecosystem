@@ -16,6 +16,17 @@ export const EDGE_BASE_URL =
 /** Integrator fee in basis points. The FeeRouter caps swaps at 100 bps on chain. */
 export const SWAP_FEE_BPS = Number(import.meta.env.VITE_SWAP_FEE_BPS ?? 25);
 
+/**
+ * Address the aggregator's integrator fee is paid to.
+ *
+ * Public by definition — it appears in every swap calldata — so there is nothing to hide here.
+ * It is read from build configuration rather than hard-coded so the same bundle can be pointed
+ * at a test treasury, and validated at startup because a malformed recipient would send fees to
+ * an address nobody controls.
+ */
+export const FEE_RECIPIENT = (import.meta.env.VITE_FEE_RECIPIENT ??
+  '0x0000000000000000000000000000000000000000') as `0x${string}`;
+
 export const SUPPORTED_CHAINS: readonly Caip2[] = [evmCaip2(8453), evmCaip2(56)];
 
 /**
@@ -25,6 +36,15 @@ export const SUPPORTED_CHAINS: readonly Caip2[] = [evmCaip2(8453), evmCaip2(56)]
  * contract address means a user's transaction goes somewhere unintended.
  */
 export function registerDeployments(): void {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(FEE_RECIPIENT)) {
+    throw new Error(`VITE_FEE_RECIPIENT is malformed: ${FEE_RECIPIENT}`);
+  }
+  if (!Number.isInteger(SWAP_FEE_BPS) || SWAP_FEE_BPS < 0 || SWAP_FEE_BPS > 100) {
+    // 100 bps is the ceiling the FeeRouter enforces in bytecode for swaps. Requesting more from
+    // an aggregator would charge a fee the platform has publicly promised it cannot charge.
+    throw new Error(`VITE_SWAP_FEE_BPS must be between 0 and 100, got ${SWAP_FEE_BPS}`);
+  }
+
   const raw = import.meta.env.VITE_DEPLOYMENTS;
   if (!raw) return;
 
