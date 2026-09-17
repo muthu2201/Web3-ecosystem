@@ -65,6 +65,29 @@ if (target.needsKey && !process.env.ETHERSCAN_API_KEY) {
 
 const chainId = arg('chain-id', '8453');
 const only = arg('only', '').split(',').filter(Boolean);
+// Blockscout rate-limits a back-to-back run. Pace the submissions rather than burning attempts.
+const gapMs = Number(arg('gap-ms', '8000'));
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Ask the explorer whether it holds verified source, rather than trusting the CLI's exit status.
+ *
+ * `forge verify-contract --watch` polls for a verification result, and that poll is rate-limited
+ * separately from the submission. A throttled poll made the CLI report failure for contracts that
+ * had in fact verified - observed on 5 of 9 "failures" in one run. So the explorer's own answer is
+ * the source of truth here, checked before anything is called failed.
+ */
+async function isVerified(address) {
+  try {
+    const res = await fetch(`https://base.blockscout.com/api/v2/smart-contracts/${address}`);
+    if (!res.ok) return false;
+    const body = await res.json();
+    return Boolean(body && (body.is_verified || body.abi));
+  } catch {
+    return false;
+  }
+}
 
 const plan = JSON.parse(readFileSync(join(CONTRACTS, 'artifacts', 'create2-plan.json'), 'utf8'));
 
@@ -102,6 +125,13 @@ for (const step of plan.steps) {
   ];
 
   process.stdout.write(`${step.contract.padEnd(24)} ${step.address} ... `);
+
+  if (choice === 'blockscout' && await isVerified(step.address)) {
+    console.log('already verified');
+    done += 1;
+    continue;
+  }
+
   try {
     const out = execFileSync('forge', argv, {
       cwd: CONTRACTS,
@@ -115,9 +145,21 @@ for (const step of plan.steps) {
     done += 1;
   } catch (e) {
     const text = `${e.stdout ?? ''}${e.stderr ?? ''}`;
-    if (/already verified/i.test(text)) { console.log('already verified'); done += 1; }
-    else { console.log('FAILED'); console.log(text.trim().split('\n').slice(-4).join('\n')); failed += 1; }
+    if (/already verified/i.test(text)) {
+      console.log('already verified');
+      done += 1;
+    } else if (choice === 'blockscout' && await isVerified(step.address)) {
+      // The submission landed; only the status poll was throttled.
+      console.log('verified (the CLI could not read the result back)');
+      done += 1;
+    } else {
+      console.log('FAILED');
+      console.log(text.trim().split('\n').slice(-4).join('\n'));
+      failed += 1;
+    }
   }
+
+  await sleep(gapMs);
 }
 
 console.log(`\n${done} verified, ${failed} failed`);
