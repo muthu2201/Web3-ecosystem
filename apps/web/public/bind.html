@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="Signs the three one-way bindings that complete the Base mainnet deployment.">
+<style>
+  :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<title>Base Binding Console</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ground: #F7F8FA;
+    --surface: #FFFFFF;
+    --surface-2: #F0F2F6;
+    --line: #DDE1E8;
+    --line-strong: #C3CAD6;
+    --ink: #11161F;
+    --muted: #5C6675;
+    --accent: #0052FF;
+    --accent-ink: #FFFFFF;
+    --ok: #12855A;
+    --ok-bg: #E4F4EC;
+    --warn: #8A5A00;
+    --warn-bg: #FBF0DA;
+    --stop: #C0292E;
+    --stop-bg: #FBE7E8;
+    --shadow: 0 1px 2px rgba(17, 22, 31, .06), 0 8px 24px -16px rgba(17, 22, 31, .3);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1116;
+      --surface: #161B22;
+      --surface-2: #1C222B;
+      --line: #262D38;
+      --line-strong: #39424F;
+      --ink: #E6EAF0;
+      --muted: #8A94A6;
+      --accent: #3D7BFF;
+      --accent-ink: #06101F;
+      --ok: #5CD69A;
+      --ok-bg: #12291F;
+      --warn: #E0A53F;
+      --warn-bg: #2A2114;
+      --stop: #F2787C;
+      --stop-bg: #2B1618;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1116;
+    --surface: #161B22;
+    --surface-2: #1C222B;
+    --line: #262D38;
+    --line-strong: #39424F;
+    --ink: #E6EAF0;
+    --muted: #8A94A6;
+    --accent: #3D7BFF;
+    --accent-ink: #06101F;
+    --ok: #5CD69A;
+    --ok-bg: #12291F;
+    --warn: #E0A53F;
+    --warn-bg: #2A2114;
+    --stop: #F2787C;
+    --stop-bg: #2B1618;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono, code { font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 72px; }
+
+  header.masthead { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: baseline; justify-content: space-between; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+  .sub { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+  .chainflag { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .chainflag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  .stack { display: flex; flex-direction: column; gap: 18px; margin-top: 22px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+  .panel-pad { padding: 16px 18px; }
+
+  /* Connection strip: not a card - it is chrome, so it reads flatter than the call panels. */
+  .conn { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; justify-content: space-between; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 13px 16px; }
+  .conn-facts { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .conn-label { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .conn-addr { font-size: 13px; word-break: break-all; }
+
+  button {
+    font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+    border-radius: 7px; border: 1px solid transparent; padding: 9px 16px;
+    background: var(--accent); color: var(--accent-ink);
+    transition: filter .12s ease, opacity .12s ease;
+  }
+  button:hover:not(:disabled) { filter: brightness(1.08); }
+  button:disabled { opacity: .42; cursor: not-allowed; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+  button.ghost:hover:not(:disabled) { background: var(--surface-2); filter: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .banner { display: flex; gap: 12px; align-items: flex-start; border-radius: 9px; padding: 12px 15px; font-size: 13.5px; border: 1px solid; }
+  .banner.warn { background: var(--warn-bg); border-color: var(--warn); color: var(--ink); }
+  .banner.stop { background: var(--stop-bg); border-color: var(--stop); color: var(--ink); }
+  .banner.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ink); }
+  .banner strong { display: block; margin-bottom: 2px; }
+  .banner .grow { flex: 1; min-width: 0; }
+  .banner button { flex-shrink: 0; padding: 6px 12px; font-size: 13px; }
+
+  .call-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+  .call-name { font-size: 15px; font-weight: 600; }
+  .call-name .contract { color: var(--muted); font-weight: 500; }
+  .call-what { margin: 8px 0 0; color: var(--muted); font-size: 13.5px; max-width: 62ch; }
+
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .chip.unset { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
+  .chip.set { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+  .chip.unknown { background: transparent; border-color: var(--line-strong); color: var(--muted); }
+  .chip.busy { background: transparent; border-color: var(--accent); color: var(--accent); }
+
+  dl.params { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 14px 0 0; padding: 13px 14px; background: var(--surface-2); border-radius: 8px; font-size: 13px; }
+  dl.params dt { color: var(--muted); font-weight: 500; }
+  dl.params dd { margin: 0; word-break: break-all; }
+  @media (max-width: 520px) { dl.params { grid-template-columns: 1fr; gap: 2px; } dl.params dd { margin-bottom: 8px; } }
+
+  details.raw { margin-top: 12px; }
+  details.raw summary { cursor: pointer; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  details.raw summary:hover { color: var(--ink); }
+  .calldata { margin-top: 9px; padding: 11px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; font-size: 11.5px; line-height: 1.7; word-break: break-all; color: var(--muted); }
+
+  .call-foot { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 15px; }
+  .txlink { font-size: 13px; color: var(--accent); word-break: break-all; }
+  .err { font-size: 13px; color: var(--stop); max-width: 60ch; }
+
+  footer { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+  footer p { margin: 0 0 8px; max-width: 68ch; }
+  a { color: var(--accent); }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <h1>Contract binding console</h1>
+      <p class="sub">Phase&nbsp;B of the Base deployment — three one-way calls.</p>
+    </div>
+    <span class="chainflag"><span class="dot"></span>Base · 8453</span>
+  </header>
+
+  <div class="stack">
+
+    <div class="conn" id="conn">
+      <div class="conn-facts">
+        <span class="conn-label">Signer</span>
+        <span class="conn-addr mono" id="acct">Not connected</span>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button id="refresh" class="ghost" hidden>Re-read state</button>
+        <button id="connect">Connect wallet</button>
+      </div>
+    </div>
+
+    <div class="banner stop" id="noProvider" hidden>
+      <div class="grow">
+        <strong>No wallet detected in this browser</strong>
+        Open this page in a browser with the MetaMask extension installed, or in MetaMask's own in-app browser.
+      </div>
+    </div>
+
+    <div class="banner warn" id="wrongChain" hidden>
+      <div class="grow">
+        <strong>Wrong network</strong>
+        These contracts live on Base. Switch before signing.
+      </div>
+      <button id="switchChain">Switch to Base</button>
+    </div>
+
+    <div class="banner stop" id="wrongAccount" hidden>
+      <div class="grow">
+        <strong>This wallet does not own the contracts</strong>
+        <span id="wrongAccountDetail"></span>
+      </div>
+    </div>
+
+    <div class="banner warn" id="irreversible">
+      <div class="grow">
+        <strong>Each call below works exactly once</strong>
+        They fix the code every future launch, presale and token deployment runs on. Nothing can change them afterwards — that permanence is what the launchpad's guarantees rest on. Read the parameters before signing.
+      </div>
+    </div>
+
+    <div class="banner ok" id="allDone" hidden>
+      <div class="grow">
+        <strong>All three bindings are set</strong>
+        The deployment is complete. The factories are live and ready to launch.
+      </div>
+    </div>
+
+    <section class="panel panel-pad" data-call="curve">
+      <div class="call-head">
+        <span class="call-name"><span class="contract">BondingCurveFactory.</span>setCurveImplementation</span>
+        <span class="chip unknown" data-role="chip">state unknown</span>
+      </div>
+      <p class="call-what">Fixes the implementation every bonding curve is cloned from. Until it is set, launching a curve reverts with <code>ImplementationNotSet</code>.</p>
+      <dl class="params">
+        <dt>Contract</dt><dd class="mono">0xA6744969E220A6cb91A7075b196641fD904De3b4</dd>
+        <dt>implementation</dt><dd class="mono">0x65686a15a74921bCBbE71980B2424609844f89Ef</dd>
+      </dl>
+      <details class="raw"><summary>Raw calldata</summary><div class="calldata mono">0xdfb495c700000000000000000000000065686a15a74921bcbbe71980b2424609844f89ef</div></details>
+      <div class="call-foot">
+        <button data-role="send" disabled>Sign and send</button>
+        <span class="txlink" data-role="tx"></span>
+        <span class="err" data-role="err"></span>
+      </div>
+    </section>
+
+    <section class="panel panel-pad" data-call="presale">
+      <div class="call-head">
+        <span class="call-name"><span class="contract">PresaleFactory.</span>setPresaleImplementation</span>
+        <span class="chip unknown" data-role="chip">state unknown</span>
+      </div>
+      <p class="call-what">Fixes the implementation every presale is cloned from. Until it is set, creating a presale reverts.</p>
+      <dl class="params">
+        <dt>Contract</dt><dd class="mono">0x484eca933E4a39E99Fa145626c300b7D32e53853</dd>
+        <dt>implementation</dt><dd class="mono">0xf81Da5d088A630dBc742031fC19F5D490f7b17Ce</dd>
+      </dl>
+      <details class="raw"><summary>Raw calldata</summary><div class="calldata mono">0x9700df88000000000000000000000000f81da5d088a630dbc742031fc19f5d490f7b17ce</div></details>
+      <div class="call-foot">
+        <button data-role="send" disabled>Sign and send</button>
+        <span class="txlink" data-role="tx"></span>
+        <span class="err" data-role="err"></span>
+      </div>
+    </section>
+
+    <section class="panel panel-pad" data-call="deployers">
+      <div class="call-head">
+        <span class="call-name"><span class="contract">TokenFactory.</span>bindDeployers</span>
+        <span class="chip unknown" data-role="chip">state unknown</span>
+      </div>
+      <p class="call-what">Binds the six token templates. The factory verifies each deployer points back at it before accepting. Until it is set, no template can be deployed.</p>
+      <dl class="params">
+        <dt>Contract</dt><dd class="mono">0x38995Ced7d483FCb007814950F50Fc623786747B</dd>
+        <dt>standard</dt><dd class="mono">0x1Eb4C2d67bC5021De2158f99AdFdc76a224DE760</dd>
+        <dt>mintable</dt><dd class="mono">0x62DE0BB4daa3516a8eB36D3CAcd3b90546AC5393</dd>
+        <dt>pausable</dt><dd class="mono">0xeF8E11F050183a3cD4aDc6952511E4AdEb89e6F1</dd>
+        <dt>governance</dt><dd class="mono">0xfbA8ae725cd48D79BBfd2bb6034F01bBB85F2f0f</dd>
+        <dt>tax</dt><dd class="mono">0x1CD280dF023b68BAe361f6867374Da2a0d7D7F63</dd>
+        <dt>compliance</dt><dd class="mono">0xa3c7e9876aEb2992182977504824e30F750Bcac6</dd>
+      </dl>
+      <details class="raw"><summary>Raw calldata</summary><div class="calldata mono">0xf7aca9b80000000000000000000000001eb4c2d67bc5021de2158f99adfdc76a224de76000000000000000000000000062de0bb4daa3516a8eb36d3cacd3b90546ac5393000000000000000000000000ef8e11f050183a3cd4adc6952511e4adeb89e6f1000000000000000000000000fba8ae725cd48d79bbfd2bb6034f01bbb85f2f0f0000000000000000000000001cd280df023b68bae361f6867374da2a0d7d7f63000000000000000000000000a3c7e9876aeb2992182977504824e30f750bcac6</div></details>
+      <div class="call-foot">
+        <button data-role="send" disabled>Sign and send</button>
+        <span class="txlink" data-role="tx"></span>
+        <span class="err" data-role="err"></span>
+      </div>
+    </section>
+
+    <footer>
+      <p>Owner and treasury: <span class="mono">0x7Dd4B2E211dD40134eDf9736690497E057D45233</span>. Only this address can send these calls; the contracts reject anyone else.</p>
+      <p>This page holds no keys and sends nothing on its own. Each button hands the transaction to your wallet, which is where it is signed. State is read live from the contracts through your wallet's own connection — nothing here is cached or assumed.</p>
+    </footer>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var CHAIN_ID = '0x2105';                                            // 8453
+  var OWNER = '0x7dd4b2e211dd40134edf9736690497e057d45233';           // compared lowercased
+  var EXPLORER = 'https://basescan.org/tx/';
+
+  var CALLS = {
+    curve: {
+      to: '0xA6744969E220A6cb91A7075b196641fD904De3b4',
+      data: '0xdfb495c700000000000000000000000065686a15a74921bcbbe71980b2424609844f89ef',
+      read: '0x83bc0bf1',                                             // curveImplementation()
+      kind: 'address'
+    },
+    presale: {
+      to: '0x484eca933E4a39E99Fa145626c300b7D32e53853',
+      data: '0x9700df88000000000000000000000000f81da5d088a630dbc742031fc19f5d490f7b17ce',
+      read: '0x6f2b474e',                                             // presaleImplementation()
+      kind: 'address'
+    },
+    deployers: {
+      to: '0x38995Ced7d483FCb007814950F50Fc623786747B',
+      data: '0xf7aca9b80000000000000000000000001eb4c2d67bc5021de2158f99adfdc76a224de76000000000000000000000000062de0bb4daa3516a8eb36d3cacd3b90546ac5393000000000000000000000000ef8e11f050183a3cd4adc6952511e4adeb89e6f1000000000000000000000000fba8ae725cd48d79bbfd2bb6034f01bbb85f2f0f0000000000000000000000001cd280df023b68bae361f6867374da2a0d7d7f63000000000000000000000000a3c7e9876aeb2992182977504824e30f750bcac6',
+      read: '0xec7926ce',                                             // deployersBound()
+      kind: 'bool'
+    }
+  };
+
+  var $ = function (sel) { return document.querySelector(sel); };
+  var panelOf = function (key) { return document.querySelector('[data-call="' + key + '"]'); };
+  var partOf = function (key, role) { return panelOf(key).querySelector('[data-role="' + role + '"]'); };
+
+  var eth = window.ethereum;
+  var account = null;
+  var chainOk = false;
+
+  function setChip(key, cls, text) {
+    var chip = partOf(key, 'chip');
+    chip.className = 'chip ' + cls;
+    chip.textContent = text;
+  }
+
+  function show(el, on) { el.hidden = !on; }
+
+  if (!eth) {
+    show($('#noProvider'), true);
+    $('#connect').disabled = true;
+  }
+
+  // --- provider plumbing -----------------------------------------------------------------
+  function request(method, params) {
+    return eth.request({ method: method, params: params || [] });
+  }
+
+  function ethCall(to, data) {
+    return request('eth_call', [{ to: to, data: data }, 'latest']);
+  }
+
+  /** Last 20 bytes of a 32-byte word, as a 0x address. */
+  function wordToAddress(word) {
+    var hex = (word || '').replace(/^0x/, '');
+    if (hex.length < 40) return null;
+    return '0x' + hex.slice(-40);
+  }
+
+  function wordToBool(word) {
+    var hex = (word || '').replace(/^0x/, '');
+    return /[1-9a-f]/.test(hex);
+  }
+
+  var ZERO = '0x0000000000000000000000000000000000000000';
+
+  // --- state ------------------------------------------------------------------------------
+  function refreshOne(key) {
+    var call = CALLS[key];
+    return ethCall(call.to, call.read).then(function (word) {
+      var done = call.kind === 'bool' ? wordToBool(word) : wordToAddress(word) !== ZERO;
+      setChip(key, done ? 'set' : 'unset', done ? 'bound' : 'not set');
+      partOf(key, 'send').disabled = done || !account || !chainOk || account !== OWNER;
+      return done;
+    }).catch(function (e) {
+      setChip(key, 'unknown', 'read failed');
+      partOf(key, 'err').textContent = 'Could not read state: ' + friendly(e);
+      return null;
+    });
+  }
+
+  function refreshAll() {
+    var keys = Object.keys(CALLS);
+    keys.forEach(function (k) { setChip(k, 'busy', 'reading'); });
+    return Promise.all(keys.map(refreshOne)).then(function (results) {
+      var all = results.length > 0 && results.every(function (r) { return r === true; });
+      show($('#allDone'), all);
+      show($('#irreversible'), !all);
+    });
+  }
+
+  function friendly(e) {
+    if (!e) return 'unknown error';
+    if (e.code === 4001) return 'you rejected the request in your wallet';
+    return e.shortMessage || e.message || String(e);
+  }
+
+  // --- connection -------------------------------------------------------------------------
+  function applyAccount(accounts) {
+    account = (accounts && accounts[0] || '').toLowerCase() || null;
+    var acctEl = $('#acct');
+
+    if (!account) {
+      acctEl.textContent = 'Not connected';
+      show($('#wrongAccount'), false);
+      show($('#refresh'), false);
+      $('#connect').hidden = false;
+      Object.keys(CALLS).forEach(function (k) {
+        setChip(k, 'unknown', 'state unknown');
+        partOf(k, 'send').disabled = true;
+      });
+      return;
+    }
+
+    acctEl.textContent = account;
+    $('#connect').hidden = true;
+    show($('#refresh'), true);
+
+    var mismatch = account !== OWNER;
+    show($('#wrongAccount'), mismatch);
+    if (mismatch) {
+      $('#wrongAccountDetail').textContent =
+        'Connected as ' + account + '. These calls must come from 0x7Dd4B2E211dD40134eDf9736690497E057D45233. ' +
+        'Switch accounts in your wallet — sending from this one would revert and waste gas.';
+    }
+  }
+
+  function applyChain(id) {
+    chainOk = (id || '').toLowerCase() === CHAIN_ID;
+    show($('#wrongChain'), !chainOk && !!account);
+    if (chainOk && account) refreshAll();
+    else if (!chainOk) {
+      Object.keys(CALLS).forEach(function (k) {
+        setChip(k, 'unknown', 'state unknown');
+        partOf(k, 'send').disabled = true;
+      });
+    }
+  }
+
+  function connect() {
+    $('#connect').disabled = true;
+    request('eth_requestAccounts')
+      .then(function (accounts) {
+        applyAccount(accounts);
+        return request('eth_chainId');
+      })
+      .then(applyChain)
+      .catch(function (e) { $('#acct').textContent = friendly(e); })
+      .then(function () { $('#connect').disabled = false; });
+  }
+
+  function switchChain() {
+    request('wallet_switchEthereumChain', [{ chainId: CHAIN_ID }])
+      .catch(function (e) {
+        if (e && e.code === 4902) {
+          return request('wallet_addEthereumChain', [{
+            chainId: CHAIN_ID,
+            chainName: 'Base',
+            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+            rpcUrls: ['https://mainnet.base.org'],
+            blockExplorerUrls: ['https://basescan.org']
+          }]);
+        }
+        throw e;
+      })
+      .then(function () { return request('eth_chainId'); })
+      .then(applyChain)
+      .catch(function (e) { $('#wrongChain').querySelector('.grow').textContent = friendly(e); });
+  }
+
+  // --- sending ----------------------------------------------------------------------------
+  function send(key) {
+    var call = CALLS[key];
+    var btn = partOf(key, 'send');
+    var txEl = partOf(key, 'tx');
+    var errEl = partOf(key, 'err');
+
+    errEl.textContent = '';
+    txEl.textContent = '';
+    btn.disabled = true;
+    setChip(key, 'busy', 'awaiting wallet');
+
+    request('eth_sendTransaction', [{ from: account, to: call.to, data: call.data, value: '0x0' }])
+      .then(function (hash) {
+        setChip(key, 'busy', 'confirming');
+        txEl.innerHTML = 'Sent — <a href="' + EXPLORER + hash + '" target="_blank" rel="noopener">' + hash.slice(0, 14) + '…' + hash.slice(-8) + '</a>';
+        return poll(hash, key);
+      })
+      .catch(function (e) {
+        errEl.textContent = friendly(e);
+        refreshOne(key);
+      });
+  }
+
+  /** Wait for the receipt, then re-read the contract rather than trusting the receipt alone. */
+  function poll(hash, key) {
+    var tries = 0;
+    return new Promise(function (resolve) {
+      (function tick() {
+        tries += 1;
+        request('eth_getTransactionReceipt', [hash]).then(function (rcpt) {
+          if (rcpt && rcpt.blockNumber) {
+            if (rcpt.status === '0x0') {
+              partOf(key, 'err').textContent = 'The transaction reverted. Nothing changed on chain.';
+              return refreshOne(key).then(resolve);
+            }
+            return refreshOne(key).then(function () {
+              return refreshAll();
+            }).then(resolve);
+          }
+          if (tries > 90) { partOf(key, 'err').textContent = 'Still pending after several minutes. Use “Re-read state” once it confirms.'; return resolve(); }
+          setTimeout(tick, 2000);
+        }).catch(function () {
+          if (tries > 90) return resolve();
+          setTimeout(tick, 2000);
+        });
+      })();
+    });
+  }
+
+  // --- wiring ------------------------------------------------------------------------------
+  if (eth) {
+    $('#connect').addEventListener('click', connect);
+    $('#refresh').addEventListener('click', refreshAll);
+    $('#switchChain').addEventListener('click', switchChain);
+    Object.keys(CALLS).forEach(function (key) {
+      partOf(key, 'send').addEventListener('click', function () { send(key); });
+    });
+
+    if (eth.on) {
+      eth.on('accountsChanged', function (accounts) {
+        applyAccount(accounts);
+        if (account && chainOk) refreshAll();
+      });
+      eth.on('chainChanged', applyChain);
+    }
+
+    // Pick up an already-authorised session without prompting.
+    request('eth_accounts').then(function (accounts) {
+      if (accounts && accounts.length) {
+        applyAccount(accounts);
+        return request('eth_chainId').then(applyChain);
+      }
+    }).catch(function () { /* no session; the connect button covers it */ });
+  }
+})();
+</script>
+
+</body>
+</html>
