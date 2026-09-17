@@ -165,6 +165,30 @@ Additionally, **differential tests** run 160 generated cases through both the So
 library and its TypeScript port and require byte-exact equality, so the price the interface quotes
 is the price the chain will produce.
 
+## Branches and dependencies
+
+Two branches, permanently:
+
+- `main` — the stable line. Complete and releasable: contracts, SDK, workers, web app, and the
+  full test suite. Nothing merges here that CI has not proven green.
+- `develop` — where work lands before it is merged to `main`.
+
+Tests live on `main` alongside the code they test, because a branch whose tests were removed is
+a branch nothing can verify. What is kept out of production code is *mocks*, and that is enforced
+mechanically rather than by convention: `scripts/check-production-isolation.mjs` fails the build
+if anything in `contracts/src/` or the production `Deploy.s.sol` imports from `test/` or names a
+mock. `script/DeployLocal.s.sol` is the single exemption, and the reason is recorded in the
+exemption itself. CI runs the check before it runs anything else.
+
+**Dependabot is deliberately not enabled.** There is no `.github/dependabot.yml`, and adding one
+is what would switch version-update PRs on. Dependencies here are upgraded deliberately and in
+one batch, because an upgrade to this repository has to clear the whole gate — production
+isolation, a frozen-lockfile install, 13 typecheck targets, 8 build targets, 292 TypeScript
+tests, 185 contract tests, `forge fmt`, and a responsive re-audit of all 13 routes. A stream of
+single-dependency bot PRs cannot clear that gate individually and would either sit unmerged or
+get waved through, which is worse than not having them. Dependabot *security alerts* are a
+repository setting rather than a file; leave those on and act on them by hand.
+
 ## Honest limitations
 
 Read [SECURITY.md](SECURITY.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) before deploying
