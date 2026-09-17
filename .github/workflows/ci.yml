@@ -73,9 +73,19 @@ jobs:
         working-directory: contracts
         run: forge test -vvv
 
+      # forge coverage cannot use via_ir, and this codebase does not compile without it - plain
+      # `forge coverage` dies with "Stack too deep". --ir-minimum is Foundry's supported answer,
+      # and it needs two exclusions to get through:
+      #   --skip script/**        the fixture generator exceeds the stack under minimal IR
+      #   --no-match-contract     CodeSizeTest asserts EIP-170 limits, and minimal optimisation
+      #                           inflates bytecode, so it fails here for a reason that does not
+      #                           exist in a real build. That limit is still enforced - by the
+      #                           full `forge test` run above and by the dedicated size gate.
       - name: Coverage
         working-directory: contracts
-        run: forge coverage --report summary --report lcov --no-match-coverage "(test|script)"
+        run: |
+          forge coverage --ir-minimum --skip 'script/**' --no-match-contract CodeSizeTest \
+            --report summary --report lcov --no-match-coverage "(test|script)"
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -113,7 +123,10 @@ jobs:
       # because the noise floor on those would make the gate meaningless and it would be muted.
       - name: Run Slither
         working-directory: contracts
-        run: slither . --config-file slither.config.json --fail-high --fail-medium
+        # --fail-medium alone, not --fail-high --fail-medium: Slither now rejects both together
+        # ("argument --fail-medium: not allowed with argument --fail-high"). They are thresholds,
+        # and --fail-medium means "medium or greater", so it already subsumes high. Same gate.
+        run: slither . --config-file slither.config.json --fail-medium
 
   typescript:
     name: TypeScript (typecheck, test)
