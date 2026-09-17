@@ -12,13 +12,19 @@
  * every presale finalisation on Base would have failed.
  */
 
+import { getAddress } from 'viem';
 import { describe, expect, it } from 'vitest';
 
 import {
   allChains,
+  BASE,
+  BSC_TESTNET,
   defaultDex,
   getChain,
+  getDeployment,
+  hasDeployment,
   poolCreationDexes,
+  registerDeployment,
   swapStrategy,
   type ChainConfig,
 } from './index.js';
@@ -102,5 +108,29 @@ describe('swap strategy follows aggregator coverage, not a hard-coded chain list
     for (const chain of allChains()) {
       expect(poolCreationDexes(chain.id).length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('deployments', () => {
+  it('ships Base mainnet addresses so the interface works with no configuration', () => {
+    expect(hasDeployment(BASE.id)).toBe(true);
+    const d = getDeployment(BASE.id);
+    expect(d.tokenFactory).toBe('0x38995Ced7d483FCb007814950F50Fc623786747B');
+    expect(d.bondingCurveFactory).toBe('0xA6744969E220A6cb91A7075b196641fD904De3b4');
+    expect(d.feeRouter).toBe('0x5eD2184Bfb39870758494D45b31782F110ce4750');
+  });
+
+  it('gives every built-in deployment a distinct, checksummed address per contract', () => {
+    const d = getDeployment(BASE.id);
+    const values = Object.values(d);
+    expect(new Set(values).size).toBe(values.length);
+    for (const address of values) expect(address).toBe(getAddress(address));
+  });
+
+  it('still lets a local or testnet deployment override the built-in one', () => {
+    const local = { ...getDeployment(BASE.id), feeRouter: '0x000000000000000000000000000000000000dEaD' } as const;
+    registerDeployment(BSC_TESTNET.id, local);
+    expect(getDeployment(BSC_TESTNET.id).feeRouter).toBe('0x000000000000000000000000000000000000dEaD');
+    expect(getDeployment(BASE.id).feeRouter).toBe('0x5eD2184Bfb39870758494D45b31782F110ce4750');
   });
 });

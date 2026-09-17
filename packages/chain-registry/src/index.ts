@@ -305,7 +305,29 @@ export interface ContractAddresses {
   readonly nftMarketplace: `0x${string}`;
 }
 
-const DEPLOYMENTS = new Map<string, ContractAddresses>();
+/**
+ * Base mainnet, deployed 17 September 2026 and bound the same day.
+ *
+ * Hard-coded rather than supplied by configuration because these addresses can no longer change:
+ * the three bindings that fix the implementations and token templates are one-way and have been
+ * taken, so this deployment is permanent. Carrying it here means the interface works with no
+ * environment set, and a missing variable can no longer make a live platform look undeployed.
+ *
+ * `registerDeployment` still overrides it, which is what a local Anvil run or a testnet needs.
+ */
+const BASE_DEPLOYMENT: ContractAddresses = {
+  feeRouter: '0x5eD2184Bfb39870758494D45b31782F110ce4750',
+  tokenFactory: '0x38995Ced7d483FCb007814950F50Fc623786747B',
+  liquidityLocker: '0x8Cbe6F46Fa48525aDaEdB5C0Dec832615D47bAeF',
+  bondingCurveFactory: '0xA6744969E220A6cb91A7075b196641fD904De3b4',
+  presaleFactory: '0x484eca933E4a39E99Fa145626c300b7D32e53853',
+  tokenVesting: '0x26E10893ca7Ac32895229F6a8550541a266feD6D',
+  merkleDistributor: '0x680494F62BcA3a42cE3a81895c1D5C265Ca96284',
+  nftFactory: '0x5a8Eefe72A2b6C7ba7AA702f6B2a5133627b1804',
+  nftMarketplace: '0x7A6edB5d346b1060C8C2087ADF4D550555cD6D3c',
+};
+
+const DEPLOYMENTS = new Map<string, ContractAddresses>([[BASE.id, BASE_DEPLOYMENT]]);
 
 /**
  * Register deployed addresses for a chain.

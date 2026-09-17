@@ -33,27 +33,27 @@
     "compliance": "0xa3c7e9876aEb2992182977504824e30F750Bcac6"
   },
   "phaseB": {
-    "status": "pending - must be signed by the owner",
-    "note": "Each call works exactly once. Until all three land, launches revert with ImplementationNotSet and token deployment has no bound template.",
-    "calls": [
+    "status": "complete",
+    "signedBy": "0x7Dd4B2E211dD40134eDf9736690497E057D45233",
+    "completedAt": "2026-09-17",
+    "note": "All three are one-way and have now been taken. No owner action can change the code a future launch, presale or token deployment runs on.",
+    "transactions": [
       {
         "label": "BondingCurveFactory.setCurveImplementation",
-        "to": "0xA6744969E220A6cb91A7075b196641fD904De3b4",
-        "value": "0x0",
-        "data": "0xdfb495c700000000000000000000000065686a15a74921bcbbe71980b2424609844f89ef"
+        "hash": "0xaa50402781d36c19d7846efc39e7f5e1eba09805b3e983e581343a27177a5df7"
       },
       {
         "label": "PresaleFactory.setPresaleImplementation",
-        "to": "0x484eca933E4a39E99Fa145626c300b7D32e53853",
-        "value": "0x0",
-        "data": "0x9700df88000000000000000000000000f81da5d088a630dbc742031fc19f5d490f7b17ce"
+        "hash": "0xf8f3174b089649bc8b22232dde16c86c8eeddeea4fa5aeaabec2688d012087d0"
       },
       {
         "label": "TokenFactory.bindDeployers",
-        "to": "0x38995Ced7d483FCb007814950F50Fc623786747B",
-        "value": "0x0",
-        "data": "0xf7aca9b80000000000000000000000001eb4c2d67bc5021de2158f99adfdc76a224de76000000000000000000000000062de0bb4daa3516a8eb36d3cacd3b90546ac5393000000000000000000000000ef8e11f050183a3cd4adc6952511e4adeb89e6f1000000000000000000000000fba8ae725cd48d79bbfd2bb6034f01bbb85f2f0f0000000000000000000000001cd280df023b68bae361f6867374da2a0d7d7f63000000000000000000000000a3c7e9876aeb2992182977504824e30f750bcac6"
+        "hash": "0xf3772e358a8387e9f67679c6d6aa46b057f554a0460c1e9a1ffb935bce9721dd"
       }
     ]
+  },
+  "explorer": {
+    "blockscout": "https://base.blockscout.com",
+    "sourceVerified": "all 17 contracts"
   }
 }
