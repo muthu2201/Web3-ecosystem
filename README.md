@@ -1,0 +1,156 @@
+# Non-Custodial Multi-Chain Web3 Ecosystem
+
+A token launcher, bonding-curve launchpad, presale platform, NFT suite and swap interface, built
+so that no component ever holds user funds or signs on a user's behalf.
+
+Implemented from the September 2026 technical blueprint, including its corrections: bonding-curve
+tokens are restricted to a single ownerless template, liquidity is added to real DEX pools rather
+than to an aggregator, and live curve pricing is computed client-side rather than indexed.
+
+## Status
+
+| Area | State |
+|---|---|
+| Contracts | 18 contracts, 185 tests (unit, fuzz, stateful invariant), Slither clean at high and medium |
+| TypeScript | 6 packages and apps, 260 tests including differential tests against the Solidity |
+| Stress test | 401 transactions, 110M gas, 432 invariant checks, zero violations |
+| Audit | **None.** See [SECURITY.md](SECURITY.md) |
+
+## What makes it non-custodial in fact
+
+- Every value-moving action is a transaction the user signs in their own wallet.
+- The backend is an API-key proxy and a cache. It holds no funds and no keys to user accounts.
+- The MCP server has no signing code and no submission path; every tool returns an unsigned
+  transaction.
+- Fees settle atomically on-chain to a fee contract whose ceilings are compiled into bytecode.
+
+The US money-transmission cases the blueprint cites turn on custody and operational control over
+fund flow. This system is built to have neither, and the architecture is arranged so that is
+checkable rather than merely asserted.
+
+## Guarantees enforced in bytecode
+
+These are not policies. There is no code path that could violate them.
+
+- **Fees cannot exceed their published ceiling.** `maxBps` is `pure` with no setter; the flat-fee
+  ceiling is `immutable`. Raising a fee below the ceiling is timelocked; lowering one is immediate.
+- **A tax token's rate can only fall.** `setTaxes` reverts if either rate would rise, under an
+  immutable per-deployment ceiling and a 10% compile-time constant. This removes the
+  raise-the-sell-tax honeypot by construction.
+- **Locked liquidity cannot be released early.** `LiquidityLocker` has no owner, no pause and no
+  emergency path.
+- **A failed presale always refunds.** `refund` is the only function that moves native currency
+  out of a failed sale, and only to the contributor's own deposit.
+- **A presale cannot open underfunded.** Initialisation verifies the real token balance covers
+  every buyer at the hard cap plus the liquidity allocation.
+- **Vested tokens cannot be clawed back.** Revocation returns only the unvested remainder.
+- **The curve cannot be drained by rounding.** Every settlement rounds in the pool's favour.
+- **The degen launcher cannot produce a rug.** It only knows how to build `StandardToken`: fixed
+  supply, ownerless, no mint, no tax, no pause, no blocklist.
+
+## Repository layout
+
+```
+contracts/          Foundry project: 18 contracts, 185 tests
+  src/fees/         FeeRouter with bytecode-enforced caps and a timelock
+  src/tokens/       Six audited templates behind per-template deployers
+  src/launch/       BondingCurve, Presale and their factories
+  src/liquidity/    LiquidityLocker
+  src/distribution/ TokenVesting, MerkleDistributor
+  src/nft/          NftCollection, NftFactory, NftMarketplace
+  test/invariant/   Stateful invariant suites with handlers
+
+packages/
+  core/             Domain types, CAIP ids, curve and fee maths (bigint throughout)
+  ports/            Interfaces for every external dependency
+  chain-registry/   Config-driven chains with capability flags
+  sdk/              viem transaction builders and generated ABIs
+  adapters/         0x, GoPlus, GeckoTerminal, Etherscan V2, IPFS, simulation
+
+apps/
+  web/              Static React front-end
+  edge/             Cloudflare Worker: API-key custodian, rate limiter, cache
+  mcp/              Remote MCP server returning unsigned transactions
+
+scripts/stress/     Full-ecosystem load harness
+```
+
+## Getting started
+
+Requires Node 22, pnpm 10 and Foundry.
+
+```bash
+pnpm install
+cd contracts && forge build && forge test
+cd .. && pnpm contracts:abi   # generate ABIs into the SDK
+pnpm verify                   # typecheck, lint, TypeScript tests, contract tests
+```
+
+Run the full-ecosystem stress test against a local node:
+
+```bash
+pnpm stress
+```
+
+Scale it with `STRESS_CURVES`, `STRESS_TRADES`, `STRESS_PRESALES`, `STRESS_NFT_MINTS` and
+`STRESS_TOKEN_DEPLOYS`.
+
+## Deployment
+
+```bash
+cd contracts
+SAFE_ADDRESS=0x... DEX_ROUTER=0x... forge script script/Deploy.s.sol --rpc-url <url> --broadcast
+```
+
+Then, from the Safe:
+
+1. `curveFactory.setCurveImplementation(...)` and `presaleFactory.setPresaleImplementation(...)`
+2. `tokenFactory.bindDeployers(...)`
+3. `feeRouter.proposeFeeConfig(...)` per product, then `executeFeeConfig` after the timelock
+
+Every binding is one-way. **All fees start at zero** — a freshly deployed ecosystem charges
+nothing until a multisig has explicitly, publicly and with notice turned them on.
+
+## Testing approach
+
+Three layers, each catching what the others cannot:
+
+**Unit and fuzz tests** check known scenarios and property-based edge cases. The curve's rounding
+invariants are fuzzed directly, because a rounding bug there is a drain vector rather than a
+cosmetic error.
+
+**Stateful invariant suites** check properties that must hold after any sequence of calls the
+fuzzer can construct, against ghost ledgers maintained independently of contract storage — so
+solvency is verified against an external source of truth rather than the contract agreeing with
+itself. `afterInvariant` asserts each campaign was substantive, so a change that makes one vacuous
+fails loudly instead of passing silently.
+
+**Integration and stress tests** run against a real node. This layer is not redundant: Foundry
+raises the EIP-170 code-size limit inside tests, so `TokenFactory` at 59,318 bytes — more than
+double the limit, undeployable on any chain — passed all 182 unit tests before a real deployment
+caught it. CI now enforces the limit explicitly.
+
+Additionally, **differential tests** run 160 generated cases through both the Solidity curve
+library and its TypeScript port and require byte-exact equality, so the price the interface quotes
+is the price the chain will produce.
+
+## Honest limitations
+
+Read [SECURITY.md](SECURITY.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) before deploying
+with real value. In short:
+
+- **No paid audit.** Two contracts hold user funds. The testing here is strong for immutable
+  standard logic and is not a substitute for professional review.
+- **Pre-seeded pools.** A well-funded attacker can mint LP into a curve's pair before graduation.
+  Mitigated and surfaced, not eliminated.
+- **Third-party dependencies.** Charts, routing and storage each depend on an external provider
+  with its own terms and uptime. Port boundaries make them swappable; adapters degrade to an
+  explicit "unknown" rather than a false all-clear.
+- **Legal exposure.** The blueprint identifies India's FIU-IND/PMLA regime and US
+  money-transmission theory as the largest under-priced risks in the plan. Nothing in this
+  repository addresses that, and no amount of code can. Engage counsel before launch.
+
+## Licence
+
+MIT for this repository's own source. Vendored dependencies keep their own licences:
+OpenZeppelin Contracts (MIT), Solady (MIT), forge-std (MIT/Apache-2.0).
