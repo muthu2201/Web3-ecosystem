@@ -128,9 +128,41 @@ Scale it with `STRESS_CURVES`, `STRESS_TRADES`, `STRESS_PRESALES`, `STRESS_NFT_M
 
 ## Deployment
 
+**Run the preflight first.** It reads the live chain and refuses a target the contracts cannot
+work with. This is not ceremony: `main` briefly carried a registry that named Aerodrome as Base's
+DEX, and because the contracts call a two-argument `getPair(address,address)` that Solidly forks
+do not expose, every graduation and every presale finalisation would have reverted — at the
+moment a launch's whole raise was sitting in the contract. No test could catch it, because the
+tests run against a mock DEX that answers correctly. The preflight catches it in one read.
+
+```bash
+RPC_URL=<rpc> EXPECTED_CHAIN_ID=<id> DEPLOYER=0x<your address> \
+SAFE_ADDRESS=0x<safe> DEX_ROUTER=0x<v2 router> \
+  node scripts/preflight-deploy.mjs
+```
+
+It checks chain identity, that the deployer can actually pay for ~25M gas, that the owner is a
+contract rather than a lone key, and that the router and its factory answer the exact calls the
+contracts make. It only ever reads; it never signs.
+
+Verified routers, each confirmed against the live chain:
+
+| Chain | Chain ID | Router (Uniswap V2 / PancakeSwap V2) |
+| --- | --- | --- |
+| Base | 8453 | `0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24` |
+| BNB Smart Chain | 56 | `0x10ED43C718714eb63d5aA57B78B54704E256024E` |
+| Base Sepolia | 84532 | `0x1689E7B1F10000AE47eBfE339a4f69dECd19F602` |
+| BSC Testnet | 97 | `0xD99D1c33F9fC3444f8101754aBC46c52416550D1` |
+
+Aerodrome is deliberately absent. It has deeper liquidity on Base and the registry still lists it
+for routing, but it cannot serve pool creation — see `supportsV2PoolCreation` in the registry.
+
+Then deploy. `PRIVATE_KEY` is read from your own environment and never leaves your machine:
+
 ```bash
 cd contracts
-SAFE_ADDRESS=0x... DEX_ROUTER=0x... forge script script/Deploy.s.sol --rpc-url <url> --broadcast
+SAFE_ADDRESS=0x... DEX_ROUTER=0x... forge script script/Deploy.s.sol \
+  --rpc-url <url> --broadcast --verify
 ```
 
 Then, from the Safe:
