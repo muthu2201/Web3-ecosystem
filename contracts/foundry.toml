@@ -37,7 +37,7 @@ max_test_rejects = 200000
 
 [profile.default.invariant]
 runs = 128
-depth = 64
+depth = 128
 fail_on_revert = false
 call_override = false
 shrink_run_limit = 2000
