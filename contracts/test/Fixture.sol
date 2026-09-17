@@ -4,8 +4,12 @@ pragma solidity 0.8.30;
 import {FeeRouter} from "../src/fees/FeeRouter.sol";
 import {IFeeRouter} from "../src/fees/IFeeRouter.sol";
 import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2.sol";
+import {MerkleDistributor} from "../src/distribution/MerkleDistributor.sol";
+import {TokenVesting} from "../src/distribution/TokenVesting.sol";
 import {BondingCurve} from "../src/launch/BondingCurve.sol";
 import {BondingCurveFactory} from "../src/launch/BondingCurveFactory.sol";
+import {Presale} from "../src/launch/Presale.sol";
+import {PresaleFactory} from "../src/launch/PresaleFactory.sol";
 import {LiquidityLocker} from "../src/liquidity/LiquidityLocker.sol";
 import {TokenFactory} from "../src/tokens/TokenFactory.sol";
 import {MockUniswapV2Factory, MockUniswapV2Router02, MockWETH} from "./mocks/UniswapV2.sol";
@@ -21,6 +25,10 @@ abstract contract Fixture is Test {
     LiquidityLocker internal locker;
     BondingCurve internal curveImpl;
     BondingCurveFactory internal curveFactory;
+    Presale internal presaleImpl;
+    PresaleFactory internal presaleFactory;
+    TokenVesting internal vesting;
+    MerkleDistributor internal distributor;
 
     MockWETH internal weth;
     MockUniswapV2Factory internal dexFactory;
@@ -63,6 +71,16 @@ abstract contract Fixture is Test {
         );
         vm.prank(owner);
         curveFactory.setCurveImplementation(address(curveImpl));
+
+        presaleFactory = new PresaleFactory(owner, feeRouter);
+        presaleImpl = new Presale(
+            address(presaleFactory), feeRouter, IUniswapV2Router02(address(dexRouter)), locker
+        );
+        vm.prank(owner);
+        presaleFactory.setPresaleImplementation(address(presaleImpl));
+
+        vesting = new TokenVesting();
+        distributor = new MerkleDistributor();
 
         _configureFees();
 
