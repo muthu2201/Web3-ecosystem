@@ -28,7 +28,7 @@ import { getChain } from '@web3eco/chain-registry';
 import { evmCaip2, type Caip2 } from '@web3eco/core';
 import { createConfig, http, type CreateConnectorFn } from 'wagmi';
 import { base, baseSepolia, bsc, bscTestnet } from 'wagmi/chains';
-import { coinbaseWallet, injected, metaMask } from 'wagmi/connectors';
+import { injected } from 'wagmi/connectors';
 
 import { CHAIN_MODE } from './config.js';
 
@@ -65,23 +65,21 @@ const transports = {
 } as const;
 
 /**
- * Wallet connectors, in the order they are offered.
+ * Wallet connectors.
  *
- * `injected` alone was a desktop-only assumption. It needs `window.ethereum`, which exists in a
- * browser extension or a wallet's in-app browser and nowhere else - so on a phone's ordinary
- * browser, which is how most people will first open this, the connect button had nothing to talk
- * to and failed silently. The other two reach a wallet app that is not hosting the page:
- * `metaMask` deep-links or shows a QR, and `coinbaseWallet` does the same for Base's own wallet.
+ * `injected` only, and deliberately so after trying otherwise. The SDK-backed connectors -
+ * metaMask, coinbaseWallet, walletConnect - each pull a package that this workspace does not
+ * resolve: pnpm keeps @wagmi/connectors' own dependencies out of the app's resolution path, so the
+ * bundler emitted a bare `@metamask/connect-evm` import that survived the build and failed the
+ * moment a user clicked. A connector that cannot load is worse than one that is absent, because
+ * it looks available.
  *
- * `injected` stays first because when a provider is already present it is the fastest path and
- * costs nothing to serve. wagmi also adds any EIP-6963 provider the page announces, so a user with
- * several extensions sees each of them by name.
+ * Reaching a wallet app that is not hosting the page is handled without an SDK at all: on a phone,
+ * `WalletButton` deep-links into MetaMask's in-app browser, where an injected provider exists and
+ * this connector works normally. wagmi also adds any EIP-6963 provider the page announces, so a
+ * user with several extensions sees each by name.
  */
-const connectors: CreateConnectorFn[] = [
-  injected({ shimDisconnect: true }),
-  metaMask(),
-  coinbaseWallet({ appName: 'Web3 Ecosystem', preference: { options: 'all' } }),
-];
+const connectors: CreateConnectorFn[] = [injected({ shimDisconnect: true })];
 
 export const wagmiConfig = createConfig({
   chains,
