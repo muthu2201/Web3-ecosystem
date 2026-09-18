@@ -3,48 +3,88 @@
 /*
  * Design tokens.
  *
- * Deliberately not the default web3 look. The usual failure mode is a purple-to-blue gradient on
- * every surface, one rounded-corner radius everywhere, and Inter — which reads as generic because
- * it is. This system instead uses a cold ink base with a single electric teal accent and a warm
- * sand counterpoint, four distinct radii used for different purposes, and Space Grotesk, whose
- * squared terminals suit a trading interface.
+ * Deliberately not the default look for this corner of the web. The usual failure mode is a
+ * purple-to-blue gradient on every surface, one rounded-corner radius everywhere, and Inter —
+ * which reads as generic because it is. This system uses a near-black ground, four neons that each
+ * name a part of the product rather than a mood, four distinct radii with different jobs, and
+ * Space Grotesk set heavy and tight, whose squared terminals suit a trading interface.
  *
  * Numerics are JetBrains Mono with tabular figures throughout. In a financial interface, digits
  * that shift width as a price updates are not a style preference — they make a changing number
  * hard to read.
  */
-@theme {
-  /* Base: cold near-black, layered rather than flat */
-  --color-ink-950: oklch(0.145 0.008 250);
-  --color-ink-900: oklch(0.178 0.009 250);
-  --color-ink-850: oklch(0.205 0.010 250);
-  --color-ink-800: oklch(0.238 0.011 250);
-  --color-ink-700: oklch(0.305 0.012 250);
-  --color-ink-600: oklch(0.415 0.013 250);
-  --color-ink-500: oklch(0.545 0.014 250);
-  --color-ink-400: oklch(0.672 0.012 250);
-  --color-ink-300: oklch(0.790 0.009 250);
-  --color-ink-200: oklch(0.882 0.006 250);
-  --color-ink-100: oklch(0.945 0.004 250);
+/*
+ * `static` because these tokens are read through var() at runtime - `neon()` sets `--neon` to
+ * var(--color-pulse-500) from a style attribute, which Tailwind cannot see. Left to the default,
+ * it emits only the variables some class mentions, so the magenta, lime and violet hues silently
+ * vanished and every var() fell through to the cyan fallback: a page that looked deliberate and
+ * was simply missing three of its four colours.
+ */
+@theme static {
+  /*
+   * Base: pushed to near-black so the neons have something to burn against. The previous 0.145
+   * was a comfortable dark grey - comfortable is exactly what costs a neon palette its impact,
+   * because a glow only reads as a glow when the ground under it is genuinely dark.
+   */
+  --color-ink-950: oklch(0.092 0.006 265);
+  --color-ink-925: oklch(0.124 0.007 265);
+  --color-ink-900: oklch(0.156 0.008 265);
+  --color-ink-850: oklch(0.188 0.009 265);
+  --color-ink-800: oklch(0.228 0.011 265);
+  --color-ink-700: oklch(0.302 0.013 265);
+  --color-ink-600: oklch(0.418 0.014 265);
+  --color-ink-500: oklch(0.560 0.015 265);
+  --color-ink-400: oklch(0.690 0.013 265);
+  --color-ink-300: oklch(0.812 0.010 265);
+  --color-ink-200: oklch(0.905 0.006 265);
+  --color-ink-100: oklch(0.968 0.003 265);
 
-  /* Primary: electric teal. One accent, used sparingly, so it still means something */
-  --color-flux-600: oklch(0.658 0.135 190);
-  --color-flux-500: oklch(0.742 0.148 188);
-  --color-flux-400: oklch(0.812 0.142 186);
-  --color-flux-300: oklch(0.872 0.108 185);
+  /*
+   * Four neons, each with a job rather than a mood.
+   *
+   * The generic version of this look sprays neon everywhere and means nothing by it. Here a hue
+   * tells you which part of the system you are standing in - trading is cyan wherever it appears,
+   * creating is magenta wherever it appears - so colour carries navigation instead of decoration.
+   * Chroma is high enough to read as emissive; lightness stays high enough to pass contrast on
+   * the near-black ground.
+   */
 
-  /* Secondary: warm sand, for emphasis that is not an alert */
-  --color-sand-500: oklch(0.790 0.112 75);
-  --color-sand-400: oklch(0.848 0.098 78);
+  /* FLUX - cyan. Trading: curves, swaps, the primary action on any page. */
+  --color-flux-600: oklch(0.672 0.158 196);
+  --color-flux-500: oklch(0.782 0.172 194);
+  --color-flux-400: oklch(0.858 0.152 192);
+  --color-flux-300: oklch(0.912 0.108 191);
 
-  /* Signals */
-  --color-alert-600: oklch(0.545 0.182 22);
-  --color-alert-500: oklch(0.640 0.192 22);
-  --color-alert-400: oklch(0.742 0.148 24);
-  --color-warn-500: oklch(0.762 0.148 62);
-  --color-warn-400: oklch(0.845 0.122 68);
-  --color-good-500: oklch(0.715 0.155 155);
-  --color-good-400: oklch(0.812 0.132 157);
+  /* PULSE - magenta. Creation: launch, deploy, mint. */
+  --color-pulse-600: oklch(0.632 0.228 348);
+  --color-pulse-500: oklch(0.722 0.238 346);
+  --color-pulse-400: oklch(0.808 0.186 344);
+  --color-pulse-300: oklch(0.882 0.122 344);
+
+  /* VOLT - acid lime. Live state and upside: active sales, gains, confirmations. */
+  --color-volt-600: oklch(0.742 0.192 132);
+  --color-volt-500: oklch(0.842 0.212 130);
+  --color-volt-400: oklch(0.898 0.168 128);
+  --color-volt-300: oklch(0.938 0.108 128);
+
+  /* NOVA - violet. Raising and collecting: presales, fair launches, NFT. */
+  --color-nova-600: oklch(0.588 0.218 296);
+  --color-nova-500: oklch(0.688 0.226 294);
+  --color-nova-400: oklch(0.782 0.176 292);
+  --color-nova-300: oklch(0.868 0.112 292);
+
+  /* Warm counterpoint, for emphasis that is not an alert and not a product colour */
+  --color-sand-500: oklch(0.812 0.132 78);
+  --color-sand-400: oklch(0.872 0.108 80);
+
+  /* Signals stay separate from the product hues, or a warning stops reading as a warning */
+  --color-alert-600: oklch(0.572 0.212 24);
+  --color-alert-500: oklch(0.672 0.222 24);
+  --color-alert-400: oklch(0.768 0.168 26);
+  --color-warn-500: oklch(0.798 0.162 66);
+  --color-warn-400: oklch(0.868 0.128 70);
+  --color-good-500: oklch(0.782 0.182 152);
+  --color-good-400: oklch(0.858 0.148 154);
 
   --font-display: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
@@ -84,7 +124,8 @@
   body {
     margin: 0;
     background: var(--color-ink-950);
-    color: var(--color-ink-200);
+    /* ink-100 rather than ink-200: on a near-black ground the dimmer step reads as disabled */
+    color: var(--color-ink-100);
     font-family: var(--font-sans);
     font-feature-settings: 'ss01', 'cv01';
     -webkit-font-smoothing: antialiased;
@@ -99,11 +140,23 @@
     overflow-wrap: anywhere;
   }
 
+  /*
+   * Headings carry the page here, so they are set heavy and tight rather than merely larger than
+   * body text. Space Grotesk's squared terminals hold up at 700 where a humanist face would go
+   * muddy, and negative tracking at display sizes is what stops a bold heading reading as bloated.
+   */
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.022em;
+    font-weight: 700;
+    letter-spacing: -0.038em;
+    line-height: 1.02;
     color: var(--color-ink-100);
     text-wrap: balance;
+  }
+
+  h3, h4 {
+    letter-spacing: -0.026em;
+    line-height: 1.15;
   }
 
   p {
@@ -222,6 +275,89 @@
 
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Neon.
+   *
+   * Everything below reads `--neon`, which a component sets to its domain hue - cyan for trading,
+   * magenta for creating, lime for live, violet for raising. One set of rules, four meanings, and
+   * no per-colour variants to keep in sync.
+   *
+   * A flat bright colour on black does not read as emissive; light has to spill. The spill is kept
+   * tight and low-alpha, because the failure mode of this look is a blurry haze that destroys the
+   * text it surrounds.
+   */
+  .neon-text {
+    color: var(--neon, var(--color-flux-500));
+    text-shadow:
+      0 0 12px color-mix(in oklch, var(--neon, var(--color-flux-500)) 45%, transparent),
+      0 0 38px color-mix(in oklch, var(--neon, var(--color-flux-500)) 20%, transparent);
+  }
+
+  .neon-ring {
+    border: 1px solid color-mix(in oklch, var(--neon, var(--color-flux-500)) 48%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--neon, var(--color-flux-500)) 12%, transparent),
+      0 0 24px -4px color-mix(in oklch, var(--neon, var(--color-flux-500)) 42%, transparent),
+      inset 0 1px 0 color-mix(in oklch, var(--color-ink-100) 10%, transparent);
+  }
+
+  /* A panel that declares its domain with a lit top edge and a faint wash of the same hue */
+  .lit {
+    position: relative;
+    background:
+      radial-gradient(
+        120% 80% at 50% -20%,
+        color-mix(in oklch, var(--neon, var(--color-flux-500)) 9%, transparent),
+        transparent 70%
+      ),
+      var(--color-ink-925);
+    border: 1px solid color-mix(in oklch, var(--color-ink-100) 10%, transparent);
+  }
+  .lit::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: -1px;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--neon, var(--color-flux-500)) 30%,
+      var(--neon, var(--color-flux-500)) 70%,
+      transparent
+    );
+    box-shadow: 0 0 16px color-mix(in oklch, var(--neon, var(--color-flux-500)) 65%, transparent);
+  }
+
+  /*
+   * Perspective grid, for the ground under a hero. Drawn in CSS rather than shipped as an image
+   * or a canvas, so it costs nothing and scales to any viewport.
+   */
+  .grid-floor {
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklch, var(--color-ink-100) 7%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklch, var(--color-ink-100) 7%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 44px 44px;
+    mask-image: radial-gradient(120% 90% at 50% 0%, black, transparent 72%);
+  }
+
+  /* Small uppercase label. Tracking does the work that a heavier weight would overdo at this size */
+  .eyebrow {
+    font-size: 0.688rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-500);
   }
 }
 

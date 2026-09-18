@@ -4,10 +4,12 @@ import { forwardRef, type HTMLAttributes } from 'react';
 import { cn } from '../../lib/cn.js';
 
 /**
- * Glass surface.
+ * Surface.
  *
- * `tone="lit"` draws an accent hairline along the top edge and is reserved for the panel holding
- * the page's primary action, so a user scanning a dense page can find it without reading.
+ * `tone="lit"` burns the domain hue along the top edge and washes it faintly into the panel, and
+ * is reserved for the panel holding the page's primary action — a user scanning a dense page finds
+ * it without reading. The hue comes from `--neon`, so the same component marks a launch magenta
+ * and a swap cyan.
  */
 export interface PanelProps extends HTMLAttributes<HTMLDivElement> {
   readonly tone?: 'default' | 'strong' | 'lit';
@@ -20,8 +22,7 @@ export const Panel = forwardRef<HTMLDivElement, PanelProps>(
       ref={ref}
       className={cn(
         'rounded-[var(--radius-panel)]',
-        tone === 'strong' ? 'glass-strong' : 'glass',
-        tone === 'lit' && 'edge-lit',
+        tone === 'lit' ? 'lit' : tone === 'strong' ? 'glass-strong' : 'glass',
         inset && 'p-5 sm:p-6',
         className,
       )}

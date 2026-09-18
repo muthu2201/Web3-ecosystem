@@ -8,6 +8,38 @@ Newest first.
 
 ---
 
+## Fees stay at zero until roughly 100 users have exercised the platform
+
+**Decided:** 18 Sep 2026, by the operator.
+
+Every product fee is zero on Base and stays there until the platform has been used in anger. Fees
+get set only once real launches, real graduations and real presales have happened, so the rate is
+chosen against observed behaviour rather than a guess made before anyone showed up.
+
+This costs nothing to hold: zero is already the deployed state, and `FeeRouter` has the ceilings
+compiled in whenever they are wanted.
+
+| Product | Ceiling in bytecode |
+|---|---|
+| Bonding curve trade | 1.50% |
+| Swap | 1.00% |
+| Presale | 3.00% |
+| Fair launch | 2.00% |
+| NFT mint | 2.00% |
+| NFT marketplace | 1.00% |
+| Token deploy, graduation, NFT deploy | flat only, capped at 0.01 native |
+
+Turning them on is `proposeFeeConfig` then `executeFeeConfig` **48 hours later**, per product.
+Lowering is immediate; raising always waits. So the decision to charge needs making two days before
+it takes effect, which is the right way round.
+
+**What it changed in the interface immediately:** the home page had been advertising "0.25%",
+"2% of raise" and "0.5%" on its product cards. Those numbers were never charged and are not
+configured anywhere — a live site quoting fees it does not take. Replaced with what is actually
+true: 0%.
+
+---
+
 ## The owner and treasury is a MetaMask EOA, and the revenue address is changeable by design
 
 **Decided:** 17 Sep 2026
