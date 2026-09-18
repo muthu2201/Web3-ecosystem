@@ -1,9 +1,32 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+
+/**
+ * Turn the `__SITE_ORIGIN__` placeholders in index.html into a real origin.
+ *
+ * Link previews need absolute image URLs - a relative `og:image` is resolved by some scrapers and
+ * ignored by others, which is how you get a card with a blank slot on one platform and a picture
+ * on the next. The origin is not known at author time, so it is filled in at build time from
+ * VITE_SITE_URL, or from the deployment URL the host provides. If neither exists (a local build),
+ * the placeholder collapses to nothing and the URLs stay relative, which is right for localhost.
+ */
+function siteOrigin(): Plugin {
+  const raw =
+    process.env.VITE_SITE_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined);
+  const origin = raw ? raw.replace(/\/+$/, '') : '';
+
+  return {
+    name: 'site-origin',
+    transformIndexHtml: (html) => html.replaceAll('__SITE_ORIGIN__', origin),
+  };
+}
 
 export default defineConfig({
-  plugins: [tailwindcss(), react()],
+  plugins: [tailwindcss(), react(), siteOrigin()],
   build: {
     target: 'es2022',
     /**

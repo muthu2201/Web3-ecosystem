@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0a0d12" />
     <title>Web3 Ecosystem — non-custodial multi-chain launchpad</title>
@@ -11,13 +13,38 @@
       name="description"
       content="Deploy tokens, launch on a bonding curve, run a presale, mint NFTs, swap and lock liquidity. Non-custodial: every action is a transaction you sign yourself."
     />
+    <!--
+      The card a shared link produces. This declared summary_large_image with no image behind it,
+      so every link posted to X, WhatsApp, Telegram, Slack or Discord rendered a blank slot - the
+      first thing most people saw of the site was nothing at all.
+
+      __SITE_ORIGIN__ is substituted at build time (see vite.config.ts). Scrapers do not run
+      JavaScript, so these have to be correct in the served HTML.
+    -->
     <meta property="og:title" content="Web3 Ecosystem" />
     <meta
       property="og:description"
       content="Non-custodial multi-chain token launcher, bonding-curve launchpad, presale, NFT suite and swap."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Web3 Ecosystem" />
+    <meta property="og:url" content="__SITE_ORIGIN__/" />
+    <meta property="og:image" content="__SITE_ORIGIN__/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Web3 Ecosystem — launch a coin, keep your keys."
+    />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Web3 Ecosystem" />
+    <meta
+      name="twitter:description"
+      content="Non-custodial multi-chain token launcher, bonding-curve launchpad, presale, NFT suite and swap."
+    />
+    <meta name="twitter:image" content="__SITE_ORIGIN__/og.png" />
+    <link rel="canonical" href="__SITE_ORIGIN__/" />
     <!--
       A strict CSP is the main defence against the attack that took $1.46B from Bybit in
       February 2025: injected JavaScript in a served front-end, with no contract exploited at all.

@@ -12,9 +12,49 @@ than to an aggregator, and live curve pricing is computed client-side rather tha
 | Area | State |
 |---|---|
 | Contracts | 18 contracts, 185 tests (unit, fuzz, stateful invariant), Slither clean at high and medium |
-| TypeScript | 5 packages and 3 apps, 300 tests including differential tests against the Solidity |
+| TypeScript | 5 packages and 3 apps, 305 tests including differential tests against the Solidity |
 | Stress test | 401 transactions, 110M gas, 432 invariant checks, zero violations |
+| Deployment | **Live on Base mainnet** (chain 8453), 17 contracts, all source-verified |
+| Fees | **Zero everywhere.** Not lowered — never turned on |
 | Audit | **None.** See [SECURITY.md](SECURITY.md) |
+
+## Live on Base
+
+Deployed 17 September 2026 through the canonical CREATE2 deployer. The full record — every
+address, both implementations, the three binding transactions, the smoke test and the fate of the
+gas payer — is [`deployments/base-8453.json`](deployments/base-8453.json).
+
+| Contract | Address |
+|---|---|
+| `FeeRouter` | `0x5eD2184Bfb39870758494D45b31782F110ce4750` |
+| `TokenFactory` | `0x38995Ced7d483FCb007814950F50Fc623786747B` |
+| `BondingCurveFactory` | `0xA6744969E220A6cb91A7075b196641fD904De3b4` |
+| `PresaleFactory` | `0x484eca933E4a39E99Fa145626c300b7D32e53853` |
+| `LiquidityLocker` | `0x8Cbe6F46Fa48525aDaEdB5C0Dec832615D47bAeF` |
+| `TokenVesting` | `0x26E10893ca7Ac32895229F6a8550541a266feD6D` |
+| `MerkleDistributor` | `0x680494F62BcA3a42cE3a81895c1D5C265Ca96284` |
+| `NftFactory` | `0x5a8Eefe72A2b6C7ba7AA702f6B2a5133627b1804` |
+| `NftMarketplace` | `0x7A6edB5d346b1060C8C2087ADF4D550555cD6D3c` |
+
+Four facts about this deployment that are checkable rather than asserted. Each was read back from
+Base mainnet rather than inferred from the deployment succeeding — `eth_call` against the
+addresses above reproduces all of them:
+
+- **All three one-way bindings are taken.** `setCurveImplementation` and `setPresaleImplementation`
+  revert `ImplementationAlreadySet()` (`0x0956634f`); `bindDeployers` reverts
+  `DeployersAlreadyBound()` (`0x7bdba8a6`). No owner action can change the code a future launch,
+  presale or token deployment runs on.
+- **Both implementations are sealed.** `initialize` on either reverts `AlreadyInitialized()`
+  (`0x0dc149f0`), so neither can be captured and re-pointed.
+- **Every fee reads zero.** `feeConfig` returns `(0, 0, 0)` for all six products, and the ceilings
+  above them are compiled in rather than stored.
+- **The account that paid for the deployment holds nothing and never did.** It was generated for
+  that run, given no authority — every owner and treasury is a constructor argument — swept back
+  to the owner, and discarded. Phase A cost 0.00018 ETH in total.
+
+All 17 contracts are source-verified on [Blockscout](https://base.blockscout.com). The interface
+ships these addresses compiled into `@web3eco/chain-registry`, so nothing has to be configured at
+deploy time for the site to read the chain.
 
 ## What makes it non-custodial in fact
 
@@ -68,7 +108,7 @@ packages/
   adapters/         0x, GoPlus, GeckoTerminal, Etherscan V2, IPFS, simulation
 
 apps/
-  web/              Static React front-end (Tailwind v4, three.js hero, 13 routes)
+  web/              Static React front-end (Tailwind v4, three.js hero, 14 routes)
   edge/             Cloudflare Worker: API-key custodian, rate limiter, cache
   mcp/              Remote MCP server returning unsigned transactions
 
@@ -77,11 +117,12 @@ scripts/stress/     Full-ecosystem load harness
 
 ## The interface
 
-A static React bundle with no server of its own. Thirteen routes, one per contract capability:
+A static React bundle with no server of its own. Fourteen routes, one per contract capability:
 
 | Route | What it does |
 | --- | --- |
 | `/` | Landing page; the hero renders the real bonding curve with three.js |
+| `/how-it-works` | What each part does, in plain language — the one page that explains |
 | `/explore` | Live market listing, read from the curve factory's own registry |
 | `/curve/:address` | Bonding-curve trading, quoted locally from on-chain reserves |
 | `/launch` | One-transaction launch onto a bonding curve |
@@ -91,6 +132,18 @@ A static React bundle with no server of its own. Thirteen routes, one per contra
 | `/nft`, `/nft/:address` | Deploy a collection; configure phases and mint |
 | `/lock` | Lock liquidity, extend a lock, verify any token's locked supply |
 | `/token`, `/token/:address` | Token profile with risk flags read from the contract |
+
+**Connecting a wallet** is one button with no menu. Where a provider is already in the page — a
+browser extension, or a wallet's own in-app browser — it is used directly; otherwise WalletConnect
+takes over, which shows a QR on a desktop and switches straight to the wallet app on a phone.
+Either way the user never leaves the page for a browser inside another app. A failed connection
+always says so on screen: a connect that silently goes nowhere is indistinguishable from a broken
+site, and that shipped once already.
+
+**The explanations live on one page.** Every product page used to carry its own paragraphs about
+what the contracts do. That reading is real, but it belongs somewhere a person goes when they want
+it, not in front of someone who has already decided to launch a coin and is looking for the
+button. `/how-it-works` holds all of it, in terms of what each thing does for the person using it.
 
 Three properties hold on every one of them:
 
@@ -116,8 +169,40 @@ a misclick cannot spend real funds. The chain registry still holds all four entr
 either build - what changes is the set wagmi is configured with, which is the set the interface
 can actually reach. `apps/web/src/wagmi.test.ts` asserts both directions.
 
-Run it locally with `pnpm --filter @web3eco/web dev`. It needs `VITE_DEPLOYMENTS` to reach any
-contract; without it, every contract-backed route says so plainly instead of failing obscurely.
+Run it locally with `pnpm --filter @web3eco/web dev`. The Base deployment is compiled into the
+chain registry, so it works with no configuration at all. `VITE_DEPLOYMENTS` still overrides or
+adds a chain's addresses; on a chain with neither, every contract-backed route says so plainly
+instead of failing obscurely. `VITE_WALLETCONNECT_PROJECT_ID` selects the WalletConnect project,
+and `VITE_SITE_URL` (or the host's own deployment URL) is what the link-preview tags are built
+against.
+
+### Checking the public side
+
+`scripts/audit-public-site.cjs` walks the site at two widths against a real build and fails on
+what a visitor would actually notice — a page that did not mount, a contract-backed page showing
+its "not deployed" guard, a nearly blank screen, horizontal overflow, console errors — and then
+checks that every image and manifest the `<head>` promises actually comes back, with the right
+content type.
+
+Each of those checks exists because a shallower one passed something it should not have. An
+earlier version reported 14/14 clean while every contract-backed page rendered the same "not
+deployed" placeholder, then reported ALL CLEAN against a dead server, because Chromium's own error
+page has plenty of text and no guard wording. The asset check is the third instance: the site
+declared a large summary card with no image behind it, so every link shared to X, WhatsApp,
+Telegram or Discord rendered a blank slot — invisible to every check, because no page renders it.
+
+```bash
+pnpm --filter "@web3eco/web..." build      # the ... matters: a stale registry reads as undeployed
+npx http-server apps/web/dist -p 4174 --proxy "http://127.0.0.1:4174?"
+node scripts/audit-public-site.cjs
+```
+
+The social card and home-screen icons are generated from the design tokens rather than drawn, so
+the palette cannot drift from `globals.css`:
+
+```bash
+node scripts/build-social-images.mjs
+```
 
 ## Getting started
 
@@ -141,7 +226,10 @@ Scale it with `STRESS_CURVES`, `STRESS_TRADES`, `STRESS_PRESALES`, `STRESS_NFT_M
 
 ## Deployment
 
-The full runbook is [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The shape of it:
+The full runbook is [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), and it has now been run once, on
+Base — see [Live on Base](#live-on-base) above and
+[`deployments/base-8453.json`](deployments/base-8453.json) for what came out of it. The shape of
+it:
 
 **Run the preflight first.** It reads the live chain and refuses a target the contracts cannot
 work with. This is not ceremony: `main` briefly carried a registry that named Aerodrome as Base's
@@ -194,7 +282,8 @@ treasury and admin arrives as a constructor argument. It can be a throwaway hold
 2. `tokenFactory.bindDeployers(...)`
 
 and later, when fees are wanted, `feeRouter.proposeFeeConfig(...)` per product followed by
-`executeFeeConfig` after the timelock.
+`executeFeeConfig` after the timelock. On Base that has not been done and is not planned until the
+platform has been used by real people for real launches — see **Fees** in the status table.
 
 Every binding is one-way. **All fees start at zero** — a freshly deployed ecosystem charges
 nothing until the owner has explicitly, publicly and with notice turned them on.
@@ -273,8 +362,8 @@ exemption itself. CI runs the check before it runs anything else.
 **Dependabot is deliberately not enabled.** There is no `.github/dependabot.yml`, and adding one
 is what would switch version-update PRs on. Dependencies here are upgraded deliberately and in
 one batch, because an upgrade to this repository has to clear the whole gate — production
-isolation, a frozen-lockfile install, 13 typecheck targets, 8 build targets, 300 TypeScript
-tests, 185 contract tests, `forge fmt`, and a responsive re-audit of all 13 routes. A stream of
+isolation, a frozen-lockfile install, 13 typecheck targets, 8 build targets, 305 TypeScript
+tests, 185 contract tests, `forge fmt`, and a responsive re-audit of the public site. A stream of
 single-dependency bot PRs cannot clear that gate individually and would either sit unmerged or
 get waved through, which is worse than not having them. Dependabot *security alerts* are a
 repository setting rather than a file; leave those on and act on them by hand.

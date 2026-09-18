@@ -29,9 +29,57 @@ const LIVE_TOKEN = '0x7A5e1d1e63B6dD577433cB2165e941CA3bAa89a2';
 
 const ROUTES = [
   '/', '/explore', '/launch', '/deploy', '/swap', '/presale', '/nft', '/lock', '/token',
+  '/how-it-works',
   `/curve/${LIVE_CURVE}`, `/token/${LIVE_TOKEN}`,
   '/no-such-page', // must fall back to the overview rather than a blank screen
 ];
+
+/*
+ * Files the served site promises in its own <head>, and the type each must come back as.
+ *
+ * The site declared a large summary card with no image behind it, so every shared link rendered a
+ * blank slot - invisible to every check here, because no page renders these. They are also the
+ * files most at risk from the SPA rewrite: get that regex wrong and a missing PNG comes back as
+ * 200 text/html, which a naive status check happily passes.
+ */
+const ASSETS = [
+  ['/og.png', /^image\/png/],
+  ['/apple-touch-icon.png', /^image\/png/],
+  ['/icon-192.png', /^image\/png/],
+  ['/icon-512.png', /^image\/png/],
+  ['/favicon.svg', /^image\/svg/],
+  ['/site.webmanifest', /json/],
+];
+
+/** Every URL the head points at must exist, and none may be swallowed by the SPA fallback. */
+async function checkAssets(page) {
+  let bad = 0;
+  const declared = await page.evaluate(() =>
+    [...document.querySelectorAll('link[href], meta[content]')]
+      .map((el) => el.getAttribute('href') ?? el.getAttribute('content') ?? '')
+      .filter((v) => /^\/[^/]|^https?:/.test(v) && /\.(png|svg|ico|webmanifest|jpe?g|webp)$/i.test(v)),
+  );
+
+  for (const [path, type] of ASSETS) {
+    const res = await page.request.get(BASE + path).catch(() => null);
+    const ct = res ? String(res.headers()['content-type'] ?? '') : '';
+    const ok = res && res.status() === 200 && type.test(ct);
+    if (!ok) bad += 1;
+    console.log(
+      `${ok ? 'ok   ' : 'FAIL '}      ${path.padEnd(46)}${String(res ? res.status() : '---').padStart(6)}    ${ct || '(no response)'}`,
+    );
+  }
+
+  // A file referenced in the head but absent from ASSETS is one nothing above would have checked.
+  const unchecked = declared.filter(
+    (v) => !ASSETS.some(([p]) => v === p || v.endsWith(p)),
+  );
+  if (unchecked.length) {
+    console.log(`       head references nothing checks: ${unchecked.join(' ')}`);
+    bad += unchecked.length;
+  }
+  return bad;
+}
 
 const WIDTHS = [390, 1280];
 
@@ -47,6 +95,11 @@ async function main() {
   });
 
   let problems = 0;
+
+  const probe = await browser.newPage();
+  await probe.goto(BASE + '/', { waitUntil: 'load', timeout: 30000 }).catch(() => {});
+  problems += await checkAssets(probe);
+  await probe.close();
 
   for (const route of ROUTES) {
     for (const width of WIDTHS) {

@@ -8,6 +8,42 @@ Newest first.
 
 ---
 
+## Social and home-screen images are generated from the design tokens
+
+**Decided:** 18 Sep 2026
+
+The site declared `twitter:card=summary_large_image` with no `og:image` behind it, and had no
+`apple-touch-icon`. Every link shared to X, WhatsApp, Telegram, Slack or Discord rendered a card
+with a blank slot, and adding the site to a phone home screen produced a blank tile — for most
+people, the first thing they saw of the platform was nothing at all.
+
+The images could have been drawn once and committed. They are rendered instead, by
+`scripts/build-social-images.mjs`, from the same oklch values as `globals.css`: change a hue there
+and re-run, and the card follows. A hand-drawn PNG would have drifted from the palette on the
+first redesign, silently, because nothing compares them.
+
+Three parts of this were not obvious:
+
+- **The absolute-URL problem.** Scrapers do not run JavaScript, so the meta tags have to carry a
+  real origin in the served HTML, and the origin is not known at author time. A relative
+  `og:image` is resolved by some scrapers and ignored by others, which gives a working card on one
+  platform and a blank one on the next. Resolved with a small Vite plugin that substitutes
+  `__SITE_ORIGIN__` at build time from `VITE_SITE_URL` or the host's own deployment URL, and
+  collapses it to nothing — leaving relative URLs — for a local build.
+- **The SPA rewrite was a live hazard.** `vercel.json` rewrote everything except `assets/` and
+  `bind.html` to `index.html`. Whether a new image in `public/` served at all therefore rested on
+  the host resolving static files before rewrites — plausible, and not something to leave a
+  deployment depending on. Worse, when such a rewrite does swallow a missing file, the response is
+  `200 text/html` rather than a 404, which a status check passes. The rewrite now excludes
+  anything that looks like a top-level file, and the audit asserts the content type, not the
+  status.
+- **The audit could not have caught this.** `audit-public-site.cjs` walks routes; nothing renders
+  a social card, so no route was wrong. This is the same failure shape as the two before it — a
+  check asserting on a proxy for the thing rather than the thing — so the audit now fetches every
+  image and manifest the `<head>` promises and checks what comes back.
+
+---
+
 ## Fees stay at zero until roughly 100 users have exercised the platform
 
 **Decided:** 18 Sep 2026, by the operator.

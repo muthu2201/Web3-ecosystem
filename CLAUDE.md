@@ -35,11 +35,17 @@ there.
 - **Contracts**: 18 contracts, 185 Solidity tests (unit, fuzz, stateful invariant) all passing.
   Slither clean at medium severity and above. `forge lint` reports three notes, none in production
   logic.
-- **TypeScript**: 5 packages, 3 apps, 300 tests across 9 files, all passing. Includes differential
+- **TypeScript**: 5 packages, 3 apps, 305 tests across 9 files, all passing. Includes differential
   tests that run the TypeScript curve math against the Solidity implementation's own fixtures.
 - **CI**: six jobs — contracts, slither, typescript, stress, secrets, supply-chain.
-- **Deployment**: not yet live on any chain. The plan is built, and verified end to end against a
-  fork of Base mainnet. Base mainnet is the first target.
+- **Deployment**: **live on Base mainnet (8453)** since 17 Sep 2026. 17 contracts through the
+  canonical CREATE2 deployer, all source-verified on Blockscout, all three one-way bindings taken,
+  every fee reading zero, gas payer swept and discarded. Full record in `deployments/base-8453.json`.
+- **Front-end**: deployed. Fourteen routes, wallet connection via injected provider or
+  WalletConnect, explanations consolidated on `/how-it-works`. `scripts/audit-public-site.cjs`
+  walks every route at two widths and checks the head's images and manifest.
+- **Fees**: zero on every product, and staying there until roughly 100 people have used the
+  platform for real. See `docs/DECISIONS.md`.
 - **Audit**: none. See SECURITY.md.
 
 ## Standing rules for work in this repository

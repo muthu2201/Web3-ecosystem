@@ -16,6 +16,21 @@ in application logic: a promise a server keeps is a promise a server can break.
 The system is arranged so that this is **checkable rather than asserted**. Someone who distrusts
 the operator can verify the important claims themselves, from chain state, without permission.
 
+## Where this is deployed
+
+The architecture below is live on **Base mainnet (eip155:8453)** as of 17 September 2026: 17
+contracts placed through the canonical CREATE2 deployer, all source-verified, all three one-way
+bindings taken, every fee reading zero. The addresses are in the README and in
+[`../deployments/base-8453.json`](../deployments/base-8453.json).
+
+Two consequences matter for reading the rest of this document. First, the sealing described under
+[The two irreversible moments](#the-two-irreversible-moments) is not a future step — it has
+happened, and the guarantees it converts from policy into property are now properties on Base.
+Second, the deployed addresses are compiled into `@web3eco/chain-registry` rather than injected as
+configuration, so the interface reads the chain with nothing set. A stale build of that package is
+therefore indistinguishable, at runtime, from an undeployed chain; build the whole dependency
+chain (`pnpm --filter "@web3eco/web..." build`), not just the app.
+
 ## Layers
 
 ```
@@ -117,14 +132,51 @@ contract demands.
 
 ## The application layer
 
-**`apps/web`** is a static React bundle with no server of its own — thirteen routes, one per
-contract capability. Three properties hold everywhere:
+**`apps/web`** is a static React bundle with no server of its own — fourteen routes, one per
+contract capability plus `/how-it-works`. Three properties hold everywhere:
 
 - Nothing is read from a database. Listings, prices, risk flags and sale state all come from chain
   reads. This is why there is no backend to run and no cache to go stale.
 - Nothing is signed without a simulation of the exact payload. A failed simulation blocks signing
   rather than warning, and "could not be checked" is its own state, never shown as success.
 - Quotes are computed locally, from the differential-tested maths.
+
+### Wallet connection
+
+Two connectors, in a fixed order: an injected provider if one is in the page, WalletConnect
+otherwise. There is no wallet picker, because the picker was the problem — an SDK-per-wallet
+approach shipped a build that resolved at compile time and failed at the first click, and a deep
+link sent phone users into a browser inside another app instead of connecting the one they had.
+
+The ordering is not cosmetic. A provider already in the page is a direct call; WalletConnect is a
+relay round trip, so it is the fallback rather than the default, and it reaches every wallet
+rather than a list the interface has to maintain.
+
+Two things this layer taught, both recorded in [DECISIONS.md](DECISIONS.md):
+
+- **A wallet SDK's transitive dependencies are not resolvable from the app under pnpm's strict
+  isolation.** The bundler emitted a bare specifier, the build passed, and the button threw in
+  production. The fix is a direct dependency, verified resolvable before it is used — not a
+  connector pulled in through another package.
+- **A CSP that admits a connector still has to admit its network.** The connector loaded, the
+  modal opened, and every request it made was refused. `connect-src` now names the relay and
+  registry hosts explicitly, and `font-src` the one font origin they use — enumerated rather than
+  widened.
+
+### Design system
+
+Four neon hues on a near-black ground, each naming a part of the product rather than a mood:
+cyan for trading, magenta for creation, lime for live state and gains, violet for raising and
+collecting. A page sets `--neon` once and every component beneath it reads that variable, so
+colour carries navigation instead of decoration.
+
+The tokens are declared with Tailwind's `@theme static`. Under the default `@theme`, Tailwind
+emits only the variables some class mentions — and because `--neon` is set from a style attribute,
+three of the four hues were tree-shaken out and every `var()` fell through to the cyan fallback: a
+page that looked deliberate and was simply missing most of its colours.
+
+The same tokens generate the social card and home-screen icons, via
+`scripts/build-social-images.mjs`, so those cannot drift from the palette they came from.
 
 **`apps/edge`** is a Cloudflare Worker that exists for one reason: third-party API keys must not
 ship in a browser bundle. It is an API-key custodian, rate limiter and cache. It holds no funds and
@@ -153,9 +205,16 @@ the EIP-170 limit inside tests, which is exactly how an undeployable `TokenFacto
 tests. The stress harness has run 401 transactions and 110M gas across 432 invariant checks with
 zero violations.
 
-300 TypeScript tests across 9 files complete the picture.
+305 TypeScript tests across 9 files complete the picture.
 
-### A failure worth remembering
+**The public side**, which none of the above covers. `scripts/audit-public-site.cjs` drives a real
+browser over thirteen URLs at two widths against a real build — every top-level route, a live
+curve, a live token, and a path that must fall back rather than blank — and fails on a page that
+did not mount, a contract-backed page showing its "not deployed" guard, a nearly blank screen, horizontal
+overflow, or console errors — then checks that every image and manifest the `<head>` promises
+actually comes back with the right content type.
+
+### Failures worth remembering
 
 `contracts/artifacts/` was gitignored, and `vm.writeFile` cannot create parent directories. On a
 fresh clone, fixture generation failed and **126 of 292 tests — every differential and integration
@@ -164,6 +223,24 @@ test — did not run.** The suite reported success on what remained.
 The lesson is not about `.gitignore`. It is that a test suite reporting green is evidence only if
 you know what it ran. Fixed with a committed `.gitkeep`, an `mkdirSync`, and an error message that
 says what to do.
+
+The same shape recurred three more times, each in a check rather than in the code it checked, and
+each because the check asserted on a proxy for the thing rather than the thing:
+
+| What passed | What was true | What the proxy was |
+|---|---|---|
+| 14/14 routes clean | every contract-backed page showed "not deployed" | no crash, no overflow |
+| ALL CLEAN | the server was not running | Chromium's error page has text and no guard wording |
+| 305 tests green | `fetch` threw in every browser | Node does not brand-check the receiver |
+
+That last one is the sharpest. `globalThis.fetch` stored unbound on an instance and called as a
+method throws `Illegal invocation` in a browser, because `fetch` is brand-checked against `Window`;
+Node has no such check, so the entire adapter HTTP layer was broken in production and green in
+CI. It is bound at construction now, with a regression test that supplies a receiver-checking
+`fetch` — a test that fails against the old code in Node, where the real defect could not.
+
+The rule this produces is the one in [CLAUDE.md](../CLAUDE.md): check the claim before making it,
+against the thing itself.
 
 ## CI
 
