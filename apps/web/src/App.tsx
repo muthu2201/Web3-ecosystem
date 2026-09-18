@@ -15,6 +15,7 @@ import { AppShell } from './components/AppShell.js';
 import { DeploymentGuard } from './components/DeploymentGuard.js';
 import { Panel, Skeleton } from './components/ui/index.js';
 import { HomePage } from './pages/HomePage.js';
+import { HowItWorksPage } from './pages/HowItWorksPage.js';
 
 const ExplorePage = lazy(() =>
   import('./pages/ExplorePage.js').then((m) => ({ default: m.ExplorePage })),
@@ -50,6 +51,7 @@ export function App(): JSX.Element {
       <Suspense fallback={<RouteSkeleton />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/how-it-works" element={<HowItWorksPage />} />
           {/*
             Everything below reads a deployed contract, so each is wrapped in a guard that says so
             plainly on a chain the platform has not shipped to yet. The home page is not wrapped:

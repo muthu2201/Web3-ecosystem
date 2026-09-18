@@ -46,7 +46,12 @@ export class EthSimulateAdapter implements SimulationPort {
   private readonly timeoutMs: number;
 
   constructor(private readonly options: SimulationOptions) {
-    this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
+    // Bound to globalThis on purpose. `fetch` is a brand-checked method of the global object:
+    // stored on an instance and called as `this.fetchImpl(...)`, its receiver becomes the adapter
+    // and a browser throws "Failed to execute 'fetch' on 'Window': Illegal invocation". Node's
+    // implementation does not check the receiver, so this passes every test and fails only in a
+    // real browser - which is where it broke, silently, on every adapter at once.
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.timeoutMs = options.timeoutMs ?? 10_000;
   }
 

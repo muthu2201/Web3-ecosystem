@@ -10,8 +10,15 @@ import { registerDeployment, type ContractAddresses } from '@web3eco/chain-regis
 import type { Caip2 } from '@web3eco/core';
 import { evmCaip2 } from '@web3eco/core';
 
-export const EDGE_BASE_URL =
-  import.meta.env.VITE_EDGE_URL ?? 'https://web3eco-edge.example.workers.dev';
+/**
+ * The key-hiding proxy, or null when none is configured.
+ *
+ * It used to default to an example.workers.dev placeholder, which resolves nowhere. Every swap
+ * quote and every risk scan was fired at a host that does not exist and waited for DNS to fail,
+ * in production, for real users. A default that cannot work is worse than none: absent, the app
+ * can choose a path that does work.
+ */
+export const EDGE_BASE_URL: string | null = import.meta.env.VITE_EDGE_URL ?? null;
 
 /** Integrator fee in basis points. The FeeRouter caps swaps at 100 bps on chain. */
 export const SWAP_FEE_BPS = Number(import.meta.env.VITE_SWAP_FEE_BPS ?? 25);

@@ -165,23 +165,25 @@ function Footer(): JSX.Element {
   return (
     <footer className="relative z-0 mt-auto border-t border-ink-900/80">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="max-w-md">
-            <div className="flex items-center gap-2">
-              <Mark />
-              <span className="font-display text-[14px] font-semibold text-ink-200">Web3 Ecosystem</span>
-            </div>
-            <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-500">
-              Non-custodial. This interface never holds your funds and cannot sign on your behalf —
-              every action is a transaction you approve in your own wallet.
-            </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Mark />
+            <span className="font-display text-[14px] font-bold text-ink-200">Web3 Ecosystem</span>
+            <span className="text-[12.5px] text-ink-500">· we never hold your funds</span>
           </div>
 
-          <div className="text-[12.5px] leading-relaxed text-ink-500 sm:text-right">
-            <p className="font-medium text-warn-400">These contracts have not had a paid audit.</p>
-            <p className="mt-1 max-w-xs sm:ml-auto">
-              Two of them hold user funds. Read SECURITY.md before committing real value.
-            </p>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px]">
+            <Link to="/how-it-works" className="font-semibold text-ink-300 hover:text-ink-100">
+              How it works
+            </Link>
+            <a
+              href="https://github.com/muthu2201/Web3-ecosystem/blob/main/SECURITY.md"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-warn-400 hover:text-warn-500"
+            >
+              Not audited yet
+            </a>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { CircuitOpenError, HttpClient, HttpError } from './http.js';
+import { EthSimulateAdapter } from './simulation.js';
 import { GoPlusRiskAdapter, mergeRiskReports } from './risk.js';
 import { IpfsStorageAdapter, StorageError } from './storage.js';
 import { MAX_INTEGRATOR_FEE_BPS, ZeroExError, ZeroExSwapAdapter } from './zeroex.js';
@@ -331,5 +332,58 @@ describe('IPFS URI resolution', () => {
     expect(() => adapter.resolveUri('javascript:alert(1)')).toThrow(StorageError);
     expect(() => adapter.resolveUri('data:text/html,<script>alert(1)</script>')).toThrow(StorageError);
     expect(() => adapter.resolveUri('file:///etc/passwd')).toThrow(StorageError);
+  });
+});
+
+describe('the default fetch is callable in a browser', () => {
+  /**
+   * A stand-in for a browser's brand check.
+   *
+   * `fetch` is a method of the global object, and browsers reject a call whose receiver is not a
+   * Window. Node's implementation does not check, so storing an unbound `globalThis.fetch` on an
+   * instance and calling it as `this.fetchImpl(...)` passes every test here and throws
+   * "Failed to execute 'fetch' on 'Window': Illegal invocation" in production - which is what it
+   * did, on every adapter at once, until the reference was bound.
+   */
+  function withBrandCheckedFetch<T>(run: () => T): T {
+    const original = globalThis.fetch;
+    const impl = function fetchLike(this: unknown): Promise<Response> {
+      if (this !== globalThis && this !== undefined) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+      }
+      return Promise.resolve(new Response('{"result":"0x1"}', { status: 200 }));
+    };
+    globalThis.fetch = impl as unknown as typeof fetch;
+    try {
+      return run();
+    } finally {
+      globalThis.fetch = original;
+    }
+  }
+
+  it('HttpClient does not call fetch with itself as the receiver', async () => {
+    const result = await withBrandCheckedFetch(async () => {
+      const client = new HttpClient({ baseUrl: 'https://example.test' });
+      return client.getJson('/ping');
+    });
+    expect(result).toEqual({ result: '0x1' });
+  });
+
+  it('EthSimulateAdapter does not call fetch with itself as the receiver', async () => {
+    await withBrandCheckedFetch(async () => {
+      const adapter = new EthSimulateAdapter({ rpcUrl: 'https://example.test' });
+      // Any outcome is acceptable except the receiver TypeError; that is the regression.
+      await adapter
+        .simulate({
+          chain: 'eip155:8453',
+          from: '0x0000000000000000000000000000000000000001',
+          to: '0x0000000000000000000000000000000000000002',
+          data: '0x',
+          value: 0n,
+        } as never)
+        .catch((e: unknown) => {
+          expect(String(e)).not.toMatch(/Illegal invocation/);
+        });
+    });
   });
 });

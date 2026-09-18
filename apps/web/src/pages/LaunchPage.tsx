@@ -8,8 +8,9 @@
 
 import { formatUnits, parseUnits, sampleCurve, type TxRequest } from '@web3eco/core';
 import { MIN_LP_LOCK_SECONDS } from '@web3eco/sdk';
-import { Flame, Rocket, ShieldCheck, TrendingUp } from 'lucide-react';
+import { Rocket } from 'lucide-react';
 import type { JSX } from 'react';
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useAccount, useSendTransaction } from 'wagmi';
 
@@ -134,10 +135,8 @@ export function LaunchPage(): JSX.Element {
           Launch on a bonding curve
         </h1>
         <p className="mt-2 text-[14px] leading-relaxed text-ink-400">
-          A fixed-supply token with no owner, no mint function, no transfer tax, no pause and no
-          blocklist — not as settings switched off, but because that code does not exist in the
-          template. Every launch here deploys identical logic, so a buyer verifies it once instead
-          of auditing each new token.
+          Tradeable the moment it exists. Price rises as people buy, and it moves to a real exchange
+          once it fills.
         </p>
       </header>
 
@@ -219,33 +218,16 @@ export function LaunchPage(): JSX.Element {
           </Panel>
 
           <Panel>
-            <PanelHeader title="What happens at graduation" />
-            <ul className="grid gap-2.5 text-[13px] leading-relaxed text-ink-400">
-              <li className="flex gap-2.5">
-                <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-flux-400" />
-                <span>
-                  <strong className="text-ink-200">A real pool is created.</strong> The curve seeds
-                  an actual pair on this chain's DEX — not a routing entry on an aggregator, which
-                  has no pool to add liquidity to.
-                </span>
-              </li>
-              <li className="flex gap-2.5">
-                <Flame className="mt-0.5 h-4 w-4 shrink-0 text-sand-400" />
-                <span>
-                  <strong className="text-ink-200">LP tokens are burned or locked.</strong> Chosen
-                  at launch and executed by the contract. There is no third path and no manual
-                  step you have to trust someone to take.
-                </span>
-              </li>
-              <li className="flex gap-2.5">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-good-400" />
-                <span>
-                  <strong className="text-ink-200">Graduation is not a threshold anyone sets.</strong>{' '}
-                  It happens when the curve's supply is exhausted. No operator can move it forward
-                  or hold it back.
-                </span>
-              </li>
-            </ul>
+            <PanelHeader
+              title="What happens when it fills"
+              description="The money raised becomes trading liquidity and is put permanently beyond reach — including ours."
+            />
+            <Link
+              to="/how-it-works#launch"
+              className="text-[13px] font-semibold text-flux-400 underline decoration-flux-500/40 underline-offset-2"
+            >
+              More on how launching works
+            </Link>
           </Panel>
         </div>
 
@@ -270,9 +252,7 @@ export function LaunchPage(): JSX.Element {
             </div>
 
             <p className="mt-4 rounded-[10px] border border-ink-850 bg-ink-900/40 p-3.5 text-[12px] leading-relaxed text-ink-500">
-              The fee settles directly to the platform's fee contract — nothing routes through an
-              intermediary, and the platform never holds your funds at any point. The flat fee is
-              bounded by a ceiling that is immutable for the life of that contract.
+              No platform fee. You pay only the network cost, and we never hold your funds.
             </p>
 
             {predicted && (

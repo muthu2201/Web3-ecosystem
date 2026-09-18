@@ -107,9 +107,7 @@ export function DeployPage(): JSX.Element {
             Deploy a token
           </h1>
           <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-ink-400">
-            Six audited templates rather than arbitrary feature composition. Each one declares its
-            administrative powers on chain, so a wallet or listing page can render an honest badge
-            without trusting anything off-chain.
+            Six ready-made kinds. Pick by what it lets someone do to a holder.
           </p>
         </header>
 

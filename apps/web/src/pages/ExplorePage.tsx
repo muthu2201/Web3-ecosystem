@@ -78,8 +78,7 @@ export function ExplorePage(): JSX.Element {
             Live markets
           </h1>
           <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-ink-400">
-            Read from the factory registry on chain. No indexer, no database — nothing here can be
-            hidden or fabricated off-chain.
+            Every coin launched here, newest first.
           </p>
         </div>
         {state.status === 'ready' && (
