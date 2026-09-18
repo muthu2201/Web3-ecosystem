@@ -20,6 +20,17 @@ import { evmCaip2 } from '@web3eco/core';
  */
 export const EDGE_BASE_URL: string | null = import.meta.env.VITE_EDGE_URL ?? null;
 
+/**
+ * WalletConnect project id, or null when none is set.
+ *
+ * Free from cloud.reown.com and public by design - it identifies this app to the relay and is
+ * visible in every session, so it is build configuration rather than a secret. Without it the
+ * relay refuses connections, so the connector is only offered when it is present: an option that
+ * cannot work is worse than one that is absent.
+ */
+export const WALLETCONNECT_PROJECT_ID: string | null =
+  import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? null;
+
 /** Integrator fee in basis points. The FeeRouter caps swaps at 100 bps on chain. */
 export const SWAP_FEE_BPS = Number(import.meta.env.VITE_SWAP_FEE_BPS ?? 25);
 

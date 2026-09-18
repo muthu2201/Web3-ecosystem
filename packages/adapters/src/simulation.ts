@@ -91,7 +91,16 @@ export class EthSimulateAdapter implements SimulationPort {
           // Asks the node to report the balance deltas, which is the part a user actually needs
           // to see: not "this will succeed" but "this moves 12 ETH to an address you do not know".
           traceTransfers: true,
-          validation: true,
+          // False on purpose. `validation: true` makes the node check the call as if it were a
+          // real transaction about to enter the pool, which includes the fee covering the current
+          // base fee. A preview carries no gas price, so it defaults to zero and Base rejects the
+          // whole simulation with "max fee per gas less than block base fee" - the check failing
+          // for a reason that has nothing to do with what the transaction does.
+          //
+          // The question here is what the call does and what it moves, not whether the sender can
+          // afford it this second. The wallet settles affordability at signing time, with real
+          // numbers, which is the right place for it.
+          validation: false,
         },
         'latest',
       ],
