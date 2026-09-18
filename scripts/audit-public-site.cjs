@@ -51,6 +51,53 @@ const ASSETS = [
   ['/site.webmanifest', /json/],
 ];
 
+/*
+ * The served CSP must permit rendering an image the page built itself.
+ *
+ * The wallet chooser does not point an <img> at a remote URL - it fetches each icon, wraps it in
+ * a Blob and renders the object URL. With blob: missing from img-src the fetch returns 200, the
+ * CSP refuses the render, and every wallet in the list shows a broken image beside its name. That
+ * is invisible from outside the modal, and the modal is behind a click on a real wallet prompt,
+ * so nothing this script drives would ever reach it.
+ *
+ * Checked here against the policy the site actually serves, with no network: mint a blob, render
+ * it, and require it to load.
+ */
+async function checkBlobImageRender(page) {
+  // Only meaningful against our own page. A browser error page carries no CSP, so the blob would
+  // render there and the check would report a pass for a policy it never saw.
+  const mounted = await page
+    .evaluate(() => Boolean(document.querySelector('#root')?.firstElementChild))
+    .catch(() => false);
+  if (!mounted) {
+    console.log(`FAIL       ${'blob: image renders under the CSP'.padEnd(46)}  << not our page — CSP untested`);
+    return 1;
+  }
+
+  const ok = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        // A 1x1 GIF, as bytes, so nothing is fetched and data: cannot stand in for blob:.
+        const bytes = Uint8Array.from(
+          atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'),
+          (c) => c.charCodeAt(0),
+        );
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+        setTimeout(() => resolve(false), 4000);
+      }),
+  ).catch(() => false);
+
+  console.log(
+    `${ok ? 'ok   ' : 'FAIL '}      ${'blob: image renders under the CSP'.padEnd(46)}` +
+      `${ok ? '' : '  << wallet icons will be broken — img-src needs blob:'}`,
+  );
+  return ok ? 0 : 1;
+}
+
 /** Every URL the head points at must exist, and none may be swallowed by the SPA fallback. */
 async function checkAssets(page) {
   let bad = 0;
@@ -97,8 +144,12 @@ async function main() {
   let problems = 0;
 
   const probe = await browser.newPage();
-  await probe.goto(BASE + '/', { waitUntil: 'load', timeout: 30000 }).catch(() => {});
+  await probe.goto(BASE + '/', { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
+  // The router rewrites history as it mounts; evaluating into a context it is still replacing
+  // throws rather than failing a check, which would read as a broken audit rather than a result.
+  await probe.waitForTimeout(2500);
   problems += await checkAssets(probe);
+  problems += await checkBlobImageRender(probe);
   await probe.close();
 
   for (const route of ROUTES) {

@@ -8,6 +8,48 @@ Newest first.
 
 ---
 
+## `img-src` allows `blob:`, because that is how the wallet chooser draws
+
+**Decided:** 18 Sep 2026
+
+The WalletConnect chooser rendered every wallet's name with a broken image beside it. The obvious
+suspects were all wrong: the project ID was valid, the registry answered, `connect-src` already
+named `api.web3modal.org`, and nothing in the app uses an `<img>` tag at all.
+
+The cause is in how AppKit loads an icon. It does not set `src` to a remote URL — it fetches the
+image, wraps the response in a `Blob`, and renders `URL.createObjectURL(blob)`:
+
+```js
+const blob = await api.getBlob({ path: `${api.baseUrl}/getWalletImage/${imageId}`, params });
+AssetController.setWalletImage(imageId, URL.createObjectURL(blob));
+```
+
+So the request is governed by `connect-src`, which allowed it, and the render by `img-src`, which
+did not. `img-src 'self' data: https:` covers neither `blob:` nor anything close to it, and a
+`blob:` URL is not an https URL.
+
+Confirmed rather than reasoned, by serving two pages that differed in that one token and doing
+exactly what AppKit does:
+
+| `img-src` | fetch | render |
+|---|---|---|
+| `'self' data: https:` | 200, 1412-byte webp | `Refused to load the image 'blob:…'` |
+| `'self' data: blob: https:` | 200, 1412-byte webp | rendered, 120px |
+
+`blob:` is the narrow fix, not the broad one. A `blob:` URL refers to an object the page itself
+minted; it grants no network reach and cannot be pointed at a third party. The alternative —
+widening `connect-src` or `img-src` to more remote origins — would have been strictly worse and
+would not have worked either, because the refusal was never about where the bytes came from.
+
+**The check that would have caught it.** None existed. `audit-public-site.cjs` walks routes, and
+this failure is inside a modal behind a real wallet prompt, which nothing automated reaches. It
+now mints a `Blob` in the served page and requires the image to render — no network, so it runs
+anywhere — and it is gated on the app having mounted, because a browser error page carries no CSP
+and would have rendered the blob happily. Verified by running it against the old policy and
+watching it fail.
+
+---
+
 ## Social and home-screen images are generated from the design tokens
 
 **Decided:** 18 Sep 2026

@@ -53,13 +53,19 @@
       platform's own edge proxy plus the RPC endpoints in the chain registry, so an injected
       script has nowhere to exfiltrate to even if it executes.
 
+      img-src must allow blob:. The wallet chooser does not point an <img> at a remote URL - it
+      fetches each icon, wraps the response in a Blob and renders the object URL. Without blob:
+      the fetch succeeds, the CSP refuses the render, and every wallet in the list shows a broken
+      image beside its name. blob: permits only URLs this page minted itself; it grants no network
+      reach, which is why it is the narrow fix rather than widening connect-src.
+
       frame-ancestors is absent here on purpose: browsers ignore it when it arrives in a meta
       element, and warn about it. It is delivered as an X-Frame-Options header instead — see
       vercel.json, which also re-sends this whole policy as a real CSP header.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.reown.com; connect-src 'self' https://*.workers.dev https://mainnet.base.org https://sepolia.base.org https://bsc-dataseed.bnbchain.org https://data-seed-prebsc-1-s1.bnbchain.org:8545 https://api.web3modal.org https://explorer-api.walletconnect.com https://pulse.walletconnect.org https://rpc.walletconnect.org wss://relay.walletconnect.org wss://relay.walletconnect.com; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' https://fonts.reown.com; connect-src 'self' https://*.workers.dev https://mainnet.base.org https://sepolia.base.org https://bsc-dataseed.bnbchain.org https://data-seed-prebsc-1-s1.bnbchain.org:8545 https://api.web3modal.org https://explorer-api.walletconnect.com https://pulse.walletconnect.org https://rpc.walletconnect.org wss://relay.walletconnect.org wss://relay.walletconnect.com; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'"
     />
     <meta name="referrer" content="no-referrer" />
   </head>

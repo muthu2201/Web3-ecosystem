@@ -162,6 +162,12 @@ Two things this layer taught, both recorded in [DECISIONS.md](DECISIONS.md):
   modal opened, and every request it made was refused. `connect-src` now names the relay and
   registry hosts explicitly, and `font-src` the one font origin they use — enumerated rather than
   widened.
+- **And then it has to admit how the connector renders.** With the network allowed, the wallet
+  list came back with names and a broken image beside every one. The chooser does not point an
+  `<img>` at a remote URL: it fetches each icon, wraps it in a `Blob` and renders the object URL.
+  `img-src` allowed `'self' data: https:`, so the fetch returned 200 and the browser refused the
+  render. Allowing `blob:` fixes it and widens nothing — a `blob:` URL is one this page minted
+  itself and carries no network reach.
 
 ### Design system
 
