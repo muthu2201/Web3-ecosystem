@@ -21,15 +21,20 @@ import { evmCaip2 } from '@web3eco/core';
 export const EDGE_BASE_URL: string | null = import.meta.env.VITE_EDGE_URL ?? null;
 
 /**
- * WalletConnect project id, or null when none is set.
+ * WalletConnect project id.
  *
- * Free from cloud.reown.com and public by design - it identifies this app to the relay and is
- * visible in every session, so it is build configuration rather than a secret. Without it the
- * relay refuses connections, so the connector is only offered when it is present: an option that
- * cannot work is worse than one that is absent.
+ * Public by design: it identifies this app to the relay and is visible in every session and in the
+ * shipped bundle, so it is build configuration rather than a secret. Committed as the default so a
+ * fresh checkout and a fresh deployment both connect without anyone remembering to set a variable
+ * — a wallet button that silently does nothing because an environment is unset is the failure this
+ * project has already shipped twice.
+ *
+ * `VITE_WALLETCONNECT_PROJECT_ID` still overrides it, which is what a fork or a second environment
+ * wants. Restrict the allowed domains in the Reown dashboard: that, not secrecy, is what stops the
+ * id being used from someone else's site.
  */
 export const WALLETCONNECT_PROJECT_ID: string | null =
-  import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? null;
+  import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? 'f233fb32c16b7181994d8886ea02595c';
 
 /** Integrator fee in basis points. The FeeRouter caps swaps at 100 bps on chain. */
 export const SWAP_FEE_BPS = Number(import.meta.env.VITE_SWAP_FEE_BPS ?? 25);

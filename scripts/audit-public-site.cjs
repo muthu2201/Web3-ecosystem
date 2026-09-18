@@ -68,13 +68,20 @@ async function main() {
             chars: text.length,
             overflow: de.scrollWidth > de.clientWidth,
             guarded: /Not deployed on|no contract addresses registered/i.test(text),
+            // Proof this is our app and not the browser's own error page. A dead server renders
+            // "This site can't be reached", which has plenty of text and no guard wording, so the
+            // earlier checks passed it and the run reported ALL CLEAN against nothing at all.
+            mounted: Boolean(document.querySelector('#root')?.firstElementChild),
             heading: (document.querySelector('h1,h2')?.innerText ?? '(none)').slice(0, 34),
           };
         })
-        .catch(() => ({ chars: 0, overflow: false, guarded: false, heading: '(eval failed)' }));
+        .catch(() => ({
+          chars: 0, overflow: false, guarded: false, mounted: false, heading: '(eval failed)',
+        }));
 
       const real = errors.filter((e) => !IGNORABLE.test(e));
       const flags = [];
+      if (!seen.mounted) flags.push('APP DID NOT MOUNT — is the server up?');
       if (seen.guarded) flags.push('GUARDED — not reading the chain');
       if (seen.chars < 120) flags.push('NEARLY BLANK');
       if (seen.overflow) flags.push('HORIZONTAL OVERFLOW');
